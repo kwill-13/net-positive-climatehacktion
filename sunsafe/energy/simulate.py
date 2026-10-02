@@ -21,6 +21,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from sunsafe import config
+from sunsafe.energy.diesel import litres_from_kwh
 
 
 @dataclass
@@ -140,5 +141,5 @@ def simulate(pv_kw: float, battery_kwh: float, load_kw: np.ndarray, pv_per_kw: n
         renewable_share=1.0 - gen_kwh / load_kwh if load_kwh > 0 else 1.0,
         gen_kwh=gen_kwh,
         curtailed_kwh=float(curtailed.sum()),
-        diesel_litres=gen_kwh / config.DIESEL_KWH_PER_LITRE,
+        diesel_litres=litres_from_kwh(gen_kwh),
     )
