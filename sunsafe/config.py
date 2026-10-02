@@ -50,6 +50,17 @@ BATTERY = {
     },
 }
 
+# Capacity lost per year, compounding: capacity_y = nominal x (1 - fade)^(y - 1).
+# PLACEHOLDERS for design-year sizing; the lifecycle teammate owns the real fade model.
+BATTERY_ANNUAL_FADE = {
+    "lithium": 0.025,            # 0-1 per year. TODO: source
+    "lead_acid": 0.06,           # 0-1 per year. TODO: source
+}
+
+# ------------------------------------------------------------------ demand ----
+
+DEMAND_GROWTH_PER_YEAR = 0.03    # 0-1 per year, compounding; same default as Inputs.demand_growth_per_year
+
 # ----------------------------------------------------------------- diesel ----
 
 DIESEL_KWH_PER_LITRE = 3.0       # kWh electric per litre; typical small island gensets 2.8-3.5

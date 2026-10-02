@@ -20,18 +20,20 @@ import numpy as np
 from sunsafe import config
 from sunsafe.energy.diesel import diesel_cost
 from sunsafe.energy.simulate import SimResult, battery_params, simulate
+from sunsafe.lifecycle_placeholder import capacity_factor, grown_load
 
 
 @dataclass
 class SizingOption:
     pv_kw: float                 # kWp
-    battery_kwh: float           # kWh nominal
+    battery_kwh: float           # kWh nominal, as installed (new)
     capex_usd: float             # USD, PV + battery installed (no generator, no BOS extras)
     annualised_cost_usd: float   # USD/yr, annualised capex + diesel
-    renewable_share: float       # 0-1, year 1
-    diesel_litres: float         # litres/yr, year 1
+    renewable_share: float       # 0-1, in the design year
+    diesel_litres: float         # litres/yr, in the design year
     meets_target: bool           # False only if nothing in the search range met the target
-    sim: Optional[SimResult] = None  # full year-1 simulation (set on the returned option only)
+    sim: Optional[SimResult] = None  # full design-year simulation (set on the returned option only)
+    design_year: int = 1         # year whose faded battery + grown load the option was sized for
 
 
 def capital_recovery_factor(rate: float, years: float) -> float:
@@ -65,8 +67,10 @@ def capex_usd(pv_kw: float, battery_kwh: float, chemistry: str) -> float:
             + battery_kwh * config.BATTERY_COST_USD_PER_KWH[chemistry])
 
 
-def _evaluate(pv_kw, battery_kwh, load_kw, pv_per_kw, chemistry, diesel_price, target):
-    sim = simulate(pv_kw, battery_kwh, load_kw, pv_per_kw, chemistry)
+def _evaluate(pv_kw, battery_kwh, load_kw, pv_per_kw, chemistry, diesel_price, target,
+              cap_factor):
+    # Costs use the installed (nominal) battery; performance uses the faded capacity.
+    sim = simulate(pv_kw, battery_kwh * cap_factor, load_kw, pv_per_kw, chemistry)
     life = battery_params(chemistry)["life_years"]
     annual = (pv_kw * config.PV_COST_USD_PER_KW
               * capital_recovery_factor(config.DISCOUNT_RATE, config.PV_LIFE_YEARS)
@@ -93,11 +97,20 @@ def _best(options: list) -> Optional[SizingOption]:
 
 
 def size_system(load_kw: np.ndarray, pv_per_kw: np.ndarray, renewable_target: float,
-                chemistry: str, diesel_price: float) -> SizingOption:
+                chemistry: str, diesel_price: float, design_year: int = 1,
+                demand_growth: float = config.DEMAND_GROWTH_PER_YEAR) -> SizingOption:
     """
-    Lowest annualised-cost PV + battery that meets the renewable target in year 1.
+    Lowest annualised-cost PV + battery that meets the renewable target in the design year.
 
-    Search range (config.SIZING_*): PV 0.5x-15x average load (kW); battery 0-3 days of daily load (kWh).
+    design_year = 1 sizes for a new battery and today's load. design_year = N sizes so the
+    target is still met in year N with no battery replacement: battery performance uses
+    nominal x (1 - annual_fade)^(N-1) and load is grown by (1 + demand_growth)^(N-1)
+    (placeholder helpers in sunsafe/lifecycle_placeholder.py). The objective uses diesel
+    in the design year and capex of the installed (nominal) battery.
+
+    Search range (config.SIZING_*): PV 0.5x-15x average design-year load (kW); battery 0-3
+    days of design-year daily load (kWh), divided by the capacity factor so the range of
+    *effective* capacity searched is the same in every design year.
 
     Args:
         load_kw: hourly demand, kW, shape (8760,).
@@ -105,18 +118,21 @@ def size_system(load_kw: np.ndarray, pv_per_kw: np.ndarray, renewable_target: fl
         renewable_target: required renewable share, 0-1.
         chemistry: "lithium" or "lead_acid".
         diesel_price: delivered diesel price, USD/litre.
+        design_year: year of operation to size for, >= 1.
+        demand_growth: demand growth per year, 0-1 (only used when design_year > 1).
 
     Returns:
-        SizingOption. If no option in the range meets the target, returns the option with
+        SizingOption (battery_kwh is nominal as installed). If no option in the range meets the target, returns the option with
         the highest renewable share and meets_target=False (callers should warn).
     """
-    load_kw = np.asarray(load_kw, dtype=float)
+    cap_factor = capacity_factor(chemistry, design_year)
+    load_kw = grown_load(load_kw, design_year, demand_growth)
     avg_kw = load_kw.mean()
     daily_kwh = load_kw.sum() / (len(load_kw) / 24)
     pv_lo = config.SIZING_PV_MIN_X_AVG_LOAD * avg_kw
     pv_hi = config.SIZING_PV_MAX_X_AVG_LOAD * avg_kw
-    b_hi = config.SIZING_BATTERY_MAX_DAYS * daily_kwh
-    args = (load_kw, pv_per_kw, chemistry, diesel_price, renewable_target)
+    b_hi = config.SIZING_BATTERY_MAX_DAYS * daily_kwh / cap_factor
+    args = (load_kw, pv_per_kw, chemistry, diesel_price, renewable_target, cap_factor)
 
     pv_grid = np.linspace(pv_lo, pv_hi, config.SIZING_COARSE_STEPS_PV)
     b_grid = np.linspace(0.0, b_hi, config.SIZING_COARSE_STEPS_BATTERY)
@@ -124,7 +140,7 @@ def size_system(load_kw: np.ndarray, pv_per_kw: np.ndarray, renewable_target: fl
     best = _best(coarse)
     if best is None:
         best = max(coarse, key=lambda o: (o.renewable_share, -o.annualised_cost_usd))
-        return _with_sim(best, load_kw, pv_per_kw, chemistry)
+        return _with_sim(best, load_kw, pv_per_kw, chemistry, cap_factor, design_year)
 
     # Refine: finer grid spanning one coarse step either side of the coarse optimum.
     dpv, db = pv_grid[1] - pv_grid[0], b_grid[1] - b_grid[0]
@@ -132,10 +148,10 @@ def size_system(load_kw: np.ndarray, pv_per_kw: np.ndarray, renewable_target: fl
     pv_fine = np.linspace(max(pv_lo, best.pv_kw - dpv), min(pv_hi, best.pv_kw + dpv), n)
     b_fine = np.linspace(max(0.0, best.battery_kwh - db), min(b_hi, best.battery_kwh + db), n)
     best = _best(_search(pv_fine, b_fine, args) + [best])
-    return _with_sim(best, load_kw, pv_per_kw, chemistry)
+    return _with_sim(best, load_kw, pv_per_kw, chemistry, cap_factor, design_year)
 
 
-def _with_sim(option, load_kw, pv_per_kw, chemistry) -> SizingOption:
+def _with_sim(option, load_kw, pv_per_kw, chemistry, cap_factor, design_year) -> SizingOption:
     # Grid options keep only summaries (memory); re-run the chosen one for its hourly arrays.
-    return replace(option, sim=simulate(option.pv_kw, option.battery_kwh, load_kw,
-                                        pv_per_kw, chemistry))
+    sim = simulate(option.pv_kw, option.battery_kwh * cap_factor, load_kw, pv_per_kw, chemistry)
+    return replace(option, sim=sim, design_year=design_year)
