@@ -70,8 +70,11 @@ PV_LIFE_YEARS = 20               # years, PV array + inverters (simplification)
 # Search bounds, relative to the site's load.
 
 SIZING_PV_MIN_X_AVG_LOAD = 0.5        # PV kW from 0.5 x average load (kW) ...
-SIZING_PV_MAX_X_AVG_LOAD = 6.0        # ... up to 6 x average load (kW)
+SIZING_PV_MAX_X_AVG_LOAD = 15.0       # ... up to 15 x average load (kW). Brief said 6x, but at
+                                      # ~4 kWh/kWp/day 6x only just covers daily load before battery
+                                      # losses, so >90% targets were infeasible. Tokelau's real
+                                      # arrays are ~10-15x average load.
 SIZING_BATTERY_MAX_DAYS = 3.0         # battery kWh from 0 up to 3 days of daily load
-SIZING_COARSE_STEPS_PV = 12           # coarse grid points for PV
+SIZING_COARSE_STEPS_PV = 20           # coarse grid points for PV
 SIZING_COARSE_STEPS_BATTERY = 13      # coarse grid points for battery
 SIZING_REFINE_STEPS = 9               # points per axis in the refinement pass
