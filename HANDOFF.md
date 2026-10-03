@@ -41,10 +41,10 @@ value is commented with its source, or with TODO if it is still a placeholder.
 Still placeholders (TODO):
 - **Load:** generic 24-hour profile shape.
 - **Capital costs:** PV $2,500/kWp (evidence suggests up to ~$4,000/kWp for remote atolls; see `SOURCES.md` P2).
-- **Ageing:** battery fade 2.5%/yr lithium, 6%/yr lead-acid; demand growth 3%/yr
-  (historical growth was reported as 9%/yr; see `SOURCES.md` item 7).
+- **Ageing:** lithium battery fade 2.5%/yr.
 - **Headroom:**
-  - Candidate loads: freezer 8, school cooking 12, outboard charging 15 kWh/day.
+  - Candidate loads: school cooking 12 and outboard charging 15 kWh/day. The freezer, 25 kWh/day,
+    is sourced.
   - Non-electric energy: 3x electric load, with Fakaofo set at 1,800 kWh/day.
 - **Not counted:** generator capex and battery salvage value.
 - **Weather:** if NASA POWER is unreachable, a synthetic tropical year is used and a
@@ -60,17 +60,20 @@ Now sourced:
   applied to the site's own price. It peaks at x1.78 in June. `fuel_shock` now has
   **8 months** (2026-03 to 2026-10).
 - **Lithium:** battery $600/kWh; life 12 yrs.
-- **Lead-acid:** life 8 yrs; capex $350/kWh (ITP 2013 replacement estimate).
+- **Lead-acid:** life 8 yrs; capex $350/kWh (ITP 2013 replacement estimate); fade 3%/yr.
+- **Demand growth:** 9%/yr (Tokelau 2008-13 measured; ITP 2019). This is the app default; the
+  interface's own default stays 0.03.
+- **PV capex:** sourced range USD 2,500-4,000/kW; the default is the low end.
 - **Ageing:** PV derate 0.5%/yr; battery price decline 4%/yr.
 - **O&M:** PV $70/kW/yr; battery $10/kWh/yr.
 - **Discount rate:** 8%, with 6% as a sensitivity case.
 
 **Diesel price drives the result.**
-- **At the sourced default USD 1.87/L:** the hybrid costs $0.82/kWh vs $0.66/kWh for diesel-only,
-  so diesel-only is cheaper per kWh. The hybrid still pays back in 12.1 yrs and holds the
-  renewable target.
-- **Breakeven:** the hybrid wins above USD 2.34/L (8%) or 2.11/L (6%), e.g. at the 2.70 high
-  scenario ($0.82 vs $0.94, payback 7.7 yrs).
+- **At the sourced default USD 1.87/L and 9% growth:** holding 95% every year needs 663 kWp /
+  2,664 kWh at Fakaofo. That costs $1.07/kWh vs $0.66/kWh for diesel-only (payback ~36 yrs).
+- **Breakeven:** USD 3.09/L (8%) or 2.74/L (6%).
+- **Why it is expensive:** demand triples over 15 years. Tokelau instead upgraded in stages (2012
+  build, 2020 upgrade), and SunSafe does not yet model staged expansion.
 - **For the pitch:** this is a price-risk case (see the fuel shock), not a guaranteed saving.
 
 **Demo checklist.** These are app-side changes. Items were checked
@@ -90,7 +93,7 @@ Re-checked after commit `eacc610`, on Streamlit 1.65 and 1.39, in 4 scenarios in
 - [x] Recommended strategy shown as a card on System Design and Lifecycle, and in the proposal.
 - [x] Out-of-date banner text fixed.
 - [x] Validation table on System Design compares each atoll's real IRENA sizes, nominal vs nominal and
-  usable vs usable. Fakaofo: PV 0.95x, battery 0.44x.
+  usable vs usable, for each atoll.
 - [x] Model errors shown in the sidebar with the reason.
 - [x] Sidebar shows "Results for: <site>", and pages warn when inputs changed since the run.
 - [x] Final-year share card, plus a caption explaining the ~100% year-1 share.
@@ -111,13 +114,18 @@ Housekeeping:
   only, or use `git` from the command line.
 
 **Reference numbers** for the Fakaofo demo: 600 kWh/day, lead-acid, 95% target,
-USD 1.87/L (from `python scripts/run_tokelau.py`):
-- **Recommended:** 315 kWp / 1,481 kWh, with a new battery in year 10.
-- **Cost:** capex ~$1.31M; $0.82/kWh hybrid vs $0.66/kWh diesel-only; payback 12.1 yrs;
-  breakeven diesel price $2.34/L (8%) or $2.11/L (6%).
-- **Strategy:** about 13.5% cheaper over 15 years than building big ($1.82M vs $2.10M NPV).
-- **Validation** vs Fakaofo's real system (IRENA 2013: 330 kWp / 3,379 kWh nominal): PV 0.95x,
-  battery 0.44x, both nominal and usable. Sources are in `SOURCES.md`.
+USD 1.87/L, 9%/yr growth (from `python scripts/run_tokelau.py`):
+- **Recommended:** 663 kWp / 2,664 kWh, with a new battery in year 13.
+- **Cost:** capex ~$2.59M; $1.07/kWh hybrid vs $0.66/kWh diesel-only; payback ~36 yrs;
+  breakeven diesel price $3.09/L (8%) or $2.74/L (6%).
+- **Strategy:** about 8% cheaper over 15 years than building big ($3.46M vs $3.76M NPV).
+- **Validation:**
+  - Against Fakaofo's real system (IRENA 2013: 330 kWp / 3,379 kWh nominal): PV 2.0x, battery
+    0.79x.
+  - The real system, modelled with 9% growth, drops below 95% in year 9. It was actually
+    upgraded after ~8 yrs.
+  - 2013 solar fraction: model 95-97% vs 92.5-93.5% measured.
+  - Sources are in `SOURCES.md`.
 
 For a strategy comparison screen, `run_sunsafe_detailed(inputs)` returns
 `(results, comparison)`:
@@ -149,8 +157,11 @@ It works from any directory and takes ~60 s. It prints five sections:
 3. 15-year decline of the year-1 optimum vs the real 300 kWp / 1,350 kWh system.
 4. Strategy A (build big) vs B (moderate + planned replacement), with the recommended
    system's lifecycle curves.
-5. The real system's decline at battery fade 0.04 / 0.06 / 0.08, and the first year it
+5. The real system's decline at battery fade 0.03 / 0.04 / 0.06 / 0.08, and the first year it
    drops below 95% at each.
+6. Diesel price x discount rate, including a PV USD 4,000/kW high case.
+7. Three-atoll payback, also shown with ITP's solar O&M.
+8. Measured-performance test against the 2013 solar fractions.
 
 Inputs are constants at the top of the script. Don't tune `config.py` to hit the Tokelau
 numbers: report the gap and source the assumptions instead (every `TODO` in `config.py`).
@@ -179,7 +190,7 @@ compare_strategies(load_kw, pv_per_kw, target, chemistry, diesel_price,
 - **`YearResult`:** `year`, `battery_year`, `battery_kwh`, `demand_kwh_per_day`, `load_kwh`,
   `renewable_share`, `gen_kwh`, `diesel_litres`, `curtailed_kwh`.
 - **Degradation** (`sunsafe/lifecycle/degradation.py`): battery fade, PV derate (0.5%/yr) and
-  demand growth all compound yearly. The rates are placeholders in config.
+  demand growth all compound yearly. The rates are in config; lithium fade is still a placeholder.
 - **Strategy B sizing:** the battery is replaced at the start of year N+1. The design takes
   the larger PV and the larger battery of the two hardest years (year N and the final
   year). That is always feasible but can be slightly oversized.

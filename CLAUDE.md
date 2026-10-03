@@ -46,25 +46,32 @@ work in year 15, and turns the plan into a funding case.
 
 ## Reference run (Fakaofo, 600 kWh/day, lead-acid, 95%, USD 1.87/L)
 
-- **Recommended:** 315 kWp / 1,481 kWh, with a planned battery replacement in year 10; capex ~USD 1.31M
-  (placeholder costs).
-- **Strategy:** NPV USD 1.82M vs 2.10M for building big (~13.5% cheaper).
-- **Cost per kWh:** at USD 1.87/L the hybrid costs $0.82/kWh vs $0.66/kWh diesel-only, so diesel-only
-  is cheaper per kWh (breakeven USD 2.34/L). Simple payback is 12.1 yrs.
+Assumes 9%/yr demand growth and 3%/yr lead-acid fade (both Tokelau-derived).
+- **Recommended:** 663 kWp / 2,664 kWh, with a planned battery replacement in year 13; capex ~USD 2.59M.
+  It is sized to hold 95% in every year while demand roughly triples over 15 yrs.
+- **Strategy:** NPV USD 3.46M vs 3.76M for building big (~8% cheaper).
+- **Cost per kWh:** at USD 1.87/L the hybrid costs $1.07/kWh vs $0.66/kWh diesel-only. Breakeven is
+  USD 3.09/L (8%); simple payback 35.9 yrs.
 - **Validation** (real 2012 systems, IRENA 2013; nominal vs nominal):
-  - PV 315 kWp vs Fakaofo's 330 (0.95x).
-  - Battery 1,481 kWh vs 3,379 kWh nominal (0.44x); usable 740 vs 1,690 kWh (0.44x).
-  - The year-1 optimum (184 kWp / 750 kWh) undersizes further.
-- **Real-system payback** at USD 1.87/L: 19.5 yrs (NZD 7M) / 23.7 yrs (NZD 8.5M) vs ~9 reported.
-  Config O&M may be overstated (SOURCES.md P11). All reference figures are in `SOURCES.md`.
+  - Recommended vs Fakaofo's 330 kWp / 3,379 kWh: PV 2.0x, battery 0.79x. The year-1 optimum
+    (184 kWp / 750 kWh) is 0.56x / 0.22x.
+  - The real system (330 / 3,379) at 600 kWh/day with 9% growth first drops below 95% in year 9
+    (year 7 at 720), matching its actual upgrade after ~8 yrs.
+  - Measured 2013 solar fraction: model 96-97% (Atafu) / 95-96% (Nukunonu) on actual 2012-13
+    weather vs 92.5% / 93.5% measured. The model is mildly optimistic (run_tokelau.py section 8).
+- **Real-system payback** at USD 1.87/L: 19.5 yrs (NZD 7M) / 23.7 yrs (NZD 8.5M); 13.8 / 16.7 yrs
+  with ITP's solar O&M; ~9 reported. All reference figures are in `SOURCES.md`.
 
 ## Known limitations (state these in any write-up)
 
-- Placeholders: load shape, capital costs, battery fade, demand growth, headroom loads.
+- Placeholders: load shape, PV capex point value (sourced range USD 2,500-4,000/kW), lithium fade,
+  headroom inputs (except the freezer).
 - The battery references are reconciled (nominal 2.46-3.38 MWh per atoll; ITP's 1.1-1.6 MWh is the usable half).
-- The model's battery is ~0.44x the real one (nominal vs nominal); PV matches.
-- Modelled real-system payback is 19.5-23.7 yrs at USD 1.87/L vs ~9 reported (method unknown; config O&M may be high).
-- Historical load growth was reported as 9%/yr (ITP 2019); the model uses a 3%/yr placeholder.
+- At 9%/yr growth, holding the target every year needs a large up-front system; staged expansion (what
+  Tokelau actually did in 2020) is not modelled as a strategy.
+- The model over-predicts the 2013 solar fraction by ~1-4 points (outages, shading and generator
+  charging are not modelled).
+- Modelled real-system payback is 13.8-23.7 yrs (O&M dependent) vs ~9 reported (method unknown).
 - Results depend heavily on delivered diesel price.
 - Interface gaps: no fuel-shock slider function, no per-load backup hours, no kWh/day per new use.
 

@@ -63,7 +63,7 @@ MODEL_USABLE_FRACTION = 1 - config.BATTERY[CHEMISTRY]["min_soc"]
 SENS_TARGETS = [0.95, 0.99, 1.0]
 SENS_DESIGN_YEARS = [1, 8, 15]
 FORWARD_YEARS = 15
-FADE_RATES = [0.04, 0.06, 0.08]
+FADE_RATES = [0.03, 0.04, 0.06, 0.08]     # 0.03 = config default (sourced), 0.06 = old placeholder
 
 PRICES_USD_PER_L = [config.TOKELAU_DIESEL_PRICE_LOW_USD_PER_L, 1.50, DIESEL_PRICE, 2.00, 2.50,
                     config.TOKELAU_DIESEL_PRICE_HIGH_USD_PER_L, 3.00, 3.50]
@@ -79,6 +79,7 @@ ATOLL_DAILY_KWH = 600
 TOKELAU_2012_CAPEX_NZD = 7.0e6           # NZ advance
 TOKELAU_2012_TOTAL_COST_NZD = 8.5e6      # total project cost
 TOKELAU_REPORTED_PAYBACK_YEARS = 9
+ITP_SOLAR_OM_NZD_PER_ATOLL = 12_000    # solar O&M per atoll per year, excl. replacements [IT Power 2013 p.31]
 
 # Measured operation, 1 Nov 2012 - 31 May 2013 (211 days), from SD-card logs [IT Power 2013,
 # pp. 14-19]. Fakaofo is excluded: its logs were missing, so ITP's Fakaofo figures are estimates.
@@ -182,13 +183,14 @@ def _detailed(site, lat, lon, daily):
                     diesel_litres_per_day=daily / config.DIESEL_KWH_PER_LITRE,
                     diesel_price_per_litre=DIESEL_PRICE, daily_load_kwh=daily,
                     renewable_target=TARGET, battery_chemistry=CHEMISTRY,
-                    project_years=FORWARD_YEARS)
+                    project_years=FORWARD_YEARS,
+                    demand_growth_per_year=config.DEMAND_GROWTH_PER_YEAR)
     return run_sunsafe_detailed(inputs)
 
 
-def _econ(design, price, rate=config.DISCOUNT_RATE):
-    """Economics of a Strategy (fixed design) at a diesel price and discount rate."""
-    return fin.economics(design.capex_usd, design.annual_om_usd,
+def _econ(design, price, rate=config.DISCOUNT_RATE, capex=None):
+    """Economics of a Strategy (fixed design) at a diesel price and discount rate (optional capex)."""
+    return fin.economics(design.capex_usd if capex is None else capex, design.annual_om_usd,
                          [y.load_kwh for y in design.years], [y.gen_kwh for y in design.years],
                          price, design.replacement_year, design.replacement_usd, rate)
 
@@ -266,14 +268,21 @@ def price_sensitivity():
             pb = es[0].payback_years
             print(f"  {p:>6.2f} | " + " ".join(f"{v:>11.3f}" for v in vals)
                   + f" | {('never' if pb == float('inf') else f'{pb:.1f}'):>11}")
-        for r in DISCOUNT_RATES:
+        capex_high = rec.capex_usd + rec.pv_kw * (config.PV_COST_USD_PER_KW_HIGH - config.PV_COST_USD_PER_KW)
+        for capex, label in ((None, f"PV USD {config.PV_COST_USD_PER_KW:,.0f}/kW"),
+                             (capex_high, f"PV USD {config.PV_COST_USD_PER_KW_HIGH:,.0f}/kW (high case)")):
+          e = _econ(rec, DIESEL_PRICE, capex=capex)
+          print(f"  {label}: capex ${capex if capex else rec.capex_usd:,.0f} | at USD {DIESEL_PRICE:.2f}/L "
+                f"hybrid ${e.cost_per_kwh_hybrid_usd:.3f}/kWh vs diesel ${e.cost_per_kwh_diesel_usd:.3f} | "
+                f"payback {_yrs(e.payback_years)}")
+          for r in DISCOUNT_RATES:
             # Both levelised costs are linear in diesel price, so solve the crossing exactly.
-            lo, hi = _econ(rec, 1.0, r), _econ(rec, 2.0, r)
+            lo, hi = _econ(rec, 1.0, r, capex), _econ(rec, 2.0, r, capex)
             gap_lo = lo.cost_per_kwh_hybrid_usd - lo.cost_per_kwh_diesel_usd
             gap_hi = hi.cost_per_kwh_hybrid_usd - hi.cost_per_kwh_diesel_usd
             slope = gap_hi - gap_lo
             be = 1.0 - gap_lo / slope if slope < 0 else float("inf")
-            print(f"  Breakeven diesel price at {r:.0%}: USD {be:.2f}/L "
+            print(f"    Breakeven diesel price at {r:.0%}: USD {be:.2f}/L "
                   f"(hybrid cheaper per kWh above this)")
     print()
 
@@ -288,7 +297,7 @@ def atoll_payback():
             f"NZD {TOKELAU_2012_TOTAL_COST_NZD / 1e6:.1f}M total (USD {total_cost_usd / 1e6:.1f}M)")
     print(f"{'atoll':<10} | {'recommended design':>20} {'capex $':>11} {'payback':>8} | "
           f"{'real system (IRENA)':>20} {'saving $/yr':>11} {'payback @ NZD 7M':>17} {'@ NZD 8.5M':>11}")
-    totals = {"rec_capex": 0.0, "rec_net": 0.0, "real_net": 0.0}
+    totals = {"rec_capex": 0.0, "rec_net": 0.0, "real_net": 0.0, "real_om": 0.0}
     for name, lat, lon in ATOLLS:
         _, comp = _detailed(name, lat, lon, ATOLL_DAILY_KWH)
         rec = comp.recommended
@@ -303,6 +312,7 @@ def atoll_payback():
         totals["rec_capex"] += rec.capex_usd
         totals["rec_net"] += e_rec.annual_saving_year1_usd - rec.annual_om_usd
         totals["real_net"] += e_real.annual_saving_year1_usd - om_real
+        totals["real_om"] += om_real
         print(f"{name:<10} | {f'{rec.pv_kw:.0f} kWp / {rec.battery_kwh:.0f} kWh':>20} "
               f"{rec.capex_usd:>11,.0f} {_yrs(e_rec.payback_years):>8} | "
               f"{f'{pv_r:.0f} kWp / {batt_r:.0f} kWh':>20} {e_real.annual_saving_year1_usd:>11,.0f} "
@@ -312,6 +322,11 @@ def atoll_payback():
           f"{_yrs(_payback(totals['rec_capex'], totals['rec_net'])):>8} | {'':>20} {'':>11} "
           f"{_yrs(_payback(real_capex_usd, totals['real_net'])):>17} "
           f"{_yrs(_payback(total_cost_usd, totals['real_net'])):>11}")
+    itp_om = ITP_SOLAR_OM_NZD_PER_ATOLL * config.NZD_TO_USD_2012
+    itp_net = totals["real_net"] + totals["real_om"] - 3 * itp_om
+    print(f"With ITP's solar O&M instead (NZD {ITP_SOLAR_OM_NZD_PER_ATOLL:,}/yr per atoll = USD {itp_om:,.0f}; "
+          f"config gives USD {totals['real_om'] / 3:,.0f}): real-system payback "
+          f"{_yrs(_payback(real_capex_usd, itp_net))} (NZD 7M) / {_yrs(_payback(total_cost_usd, itp_net))} (NZD 8.5M)")
     print(f"Reported: ~{TOKELAU_REPORTED_PAYBACK_YEARS} years (method not stated). Real-system payback = "
           f"real cost / (model's year-1 fuel + generator O&M saving - solar O&M).")
     print()

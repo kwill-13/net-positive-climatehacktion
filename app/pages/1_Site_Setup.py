@@ -16,6 +16,7 @@ def apply_preset():
     if s.preset in PRESETS:
         s.site_name, s.lat, s.lon = PRESETS[s.preset]
         s.price, s.known_load, s.load_kwh, s.chem, s.target = config.TOKELAU_DIESEL_PRICE_USD_PER_L, True, 600.0, "lead_acid", 95
+        s.growth = config.DEMAND_GROWTH_PER_YEAR * 100
 
 
 st.selectbox("Load a demo preset (Tokelau delivered diesel price, 600 kWh/day)", ["—"] + list(PRESETS),

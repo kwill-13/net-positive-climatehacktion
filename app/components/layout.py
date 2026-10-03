@@ -18,7 +18,7 @@ except Exception as e:  # show the reason in the sidebar; the app cannot run ana
 
 DEFAULTS = dict(site_name="Fakaofo (test)", lat=-9.38, lon=-171.24, diesel_lpd=200.0, price=config.TOKELAU_DIESEL_PRICE_USD_PER_L,
                 known_load=False, load_kwh=600.0, critical_kw=5.0, target=90, chem="lithium",
-                growth=3.0, years=15, results=None, model_error=None)
+                growth=config.DEMAND_GROWTH_PER_YEAR * 100, years=15, results=None, model_error=None)
 CSS = """<style>
 .stApp{background:#faf9f6}
 .block-container{padding-top:2rem;max-width:1200px}
@@ -62,7 +62,7 @@ def init(title, question=None, step=None):
     if MODEL_IMPORT_ERROR:
         st.sidebar.error(f"Model not loaded: {MODEL_IMPORT_ERROR}")
     if placeholders:
-        st.markdown('<div class="notice">Real model connected. Some assumptions (load shape, PV capex, battery fade, demand growth) are still placeholders. See "Model notes and assumptions".</div>',
+        st.markdown('<div class="notice">Real model connected. Some assumptions (load shape, PV capex point value, lithium fade, headroom inputs) are still placeholders. See "Model notes and assumptions".</div>',
                     unsafe_allow_html=True)
     if r is not None and step not in (None, 0) and build_inputs() != r.inputs:
         st.warning("Inputs changed since the last run. Go to Site Setup and re-run the analysis to update these results.")

@@ -219,8 +219,7 @@ Found (qualitative):
   - "The battery capacity fades, maintenance requirements of the generators increase, and
     fuel consumption rises."
   - "Load growth was found to be increasing at a rate of 9% per year historically."
-  - **This is above the model's 3%/yr default placeholder.** State it as a limitation.
-    Users can set demand growth on the app's Site Setup page.
+  - Applied 2026-10-03: the model's Tokelau default is now 9%/yr (P7).
 - **Load size:** TendersGo, Tokelau battery upgrade, gives "~30 kW load per island"
   (lower-reliability source).
   https://www.tendersgo.com/post/tokelaus-90-solar-power-transition-battery-upgrade-project-6642
@@ -265,8 +264,9 @@ Still missing:
    It is not a quoted Tokelau price, and it sits below the model's 2.34 breakeven, so
    diesel-only is cheaper per kWh at the default (Part 1b, P1).
 4. **Measured performance stops in 2013.** There is no data on 2014-2020 decline.
-5. **Load growth:** 8-11%/yr implied for 2008-13, and 9%/yr reported by ITP; the model's
-   default is 3%/yr.
+5. **Load growth:** 8-11%/yr implied for 2008-13, and 9%/yr reported by ITP; the model now
+   uses 9%. Holding the target every year at that growth needs a large up-front system, and
+   staged expansion is not modelled.
 6. **Demand level:** real 2013 demand was about 850-940 kWh/day (Atafu, Nukunonu), above
    the 600-720 kWh/day validation loads.
 
@@ -275,23 +275,28 @@ Still missing:
 # Part 1b: Evidence for placeholders, and validation fixes (2026-10-03)
 
 Found by reading IT Power (2013) and IRENA (2013), plus targeted searches.
-- **Applied 2026-10-03:** P1 (diesel price), V1 and V2 (validation fixes); P3, P4, P12 and
-  P13 citations.
-- **Still needs a decision from William:** every other row.
+- **Applied 2026-10-03:**
+  - P1 (diesel price), P2 (PV capex range: default 2,500, high case 4,000), P5 (lead-acid fade
+    3%), P7 (9% growth), P9 (freezer 25 kWh/day).
+  - V1, V2 and V4 (validation fixes and the measured-performance test).
+  - P3, P4, P12 and P13 citations.
+- **Reported, not changed:** P11 (O&M). `run_tokelau.py` section 7 shows the real-system payback
+  with ITP's O&M as well.
+- **Still open:** P6, P8, P10.
 
 ## Placeholders and unsourced values
 
 | ID | Item | Current | Evidence found | Suggestion |
 |---|---|---|---|---|
 | P1 (**applied**: default now USD 1.87/L; scenarios 1.22 / 2.70) | Diesel price (Tokelau) | was USD 2.70/L | Landed 2013: NZD 1.16 / 1.52 / >2.00 per L; ITP used NZD 1.50 (IT Power 2013, pp. 28-29) = USD ~1.22. Apia retail 2026: USD 1.17-1.93. The 2.70 derivation divides all-fuel spend by diesel volume (item 5) | Re-derive. Use a sourced delivered price for 2026 (Apia retail plus freight) and keep 2.70 as a high scenario. **This decides solar vs diesel:** breakeven is USD 2.34/L |
-| P2 | PV capex | USD 2,500/kW (TODO) | Tokelau 2012 back-calculation: USD 6.95M total (IRENA 2013) minus ~USD 3.0-3.2M batteries (P3) over 891 kWp = **~USD 4,200-4,400/kWp** including inverters, BOS and install. Tokelau 2020 (RNZ): USD 2,500-3,300/kWp, depending on the Li-ion price assumed. Tuvalu 2024: USD 6M for 500 kW + 2 MWh (pv magazine), project-level. Global utility average: USD 691/kW (IRENA 2024) | Keep 2,500 as the low case and add ~4,000 as a remote-atoll high case. Mark sourced as a range |
+| P2 (**applied** as a range: 2,500 default, 4,000 high case) | PV capex | USD 2,500/kW (TODO) | Tokelau 2012 back-calculation: USD 6.95M total (IRENA 2013) minus ~USD 3.0-3.2M batteries (P3) over 891 kWp = **~USD 4,200-4,400/kWp** including inverters, BOS and install. Tokelau 2020 (RNZ): USD 2,500-3,300/kWp, depending on the Li-ion price assumed. Tuvalu 2024: USD 6M for 500 kW + 2 MWh (pv magazine), project-level. Global utility average: USD 691/kW (IRENA 2024) | Keep 2,500 as the low case and add ~4,000 as a remote-atoll high case. Mark sourced as a range |
 | P3 | Lead-acid capex | USD 350/kWh (TODO) | ITP's battery replacement estimate: NZD 3.75-4.0M (IT Power 2013, pp. 27, 32) for 8,602 kWh = NZD 436-465/kWh = **USD 353-377/kWh** (2013) | Keep 350 and mark it sourced |
 | P4 | Lead-acid life | 8 yrs (sourced) | ITP's tariff model also uses 8 yrs (IT Power 2013, p. 27). Replaced after ~8 yrs (RNZ 2020) | No change; add the citation |
-| P5 | Lead-acid fade | 6%/yr (TODO) | Exide Classic OPzS: 20-yr design life at 20 °C to 80% C10, which is ~1.1%/yr at 20 °C. Tokelau battery rooms measured 31-34 °C (IT Power 2013, pp. 58, 88, 117), so faster ageing is expected. Reaching 80% after ~8 yrs implies ~2.8%/yr. ITP 2019 cites a "gradual decrease in battery capacity" | Consider 3%/yr as the base case, with 6% as pessimistic. The 0.04-0.08 sensitivity already brackets this |
+| P5 (**applied**: 3%/yr) | Lead-acid fade | 6%/yr (TODO) | Exide Classic OPzS: 20-yr design life at 20 °C to 80% C10, which is ~1.1%/yr at 20 °C. Tokelau battery rooms measured 31-34 °C (IT Power 2013, pp. 58, 88, 117), so faster ageing is expected. Reaching 80% after ~8 yrs implies ~2.8%/yr. ITP 2019 cites a "gradual decrease in battery capacity" | Consider 3%/yr as the base case, with 6% as pessimistic. The 0.04-0.08 sensitivity already brackets this |
 | P6 | Li-ion fade | 2.5%/yr (TODO) | No Pacific-specific source found. Lab literature gives wide ranges | Keep TODO |
-| P7 | Demand growth | 3%/yr (TODO) | Tokelau 2008-13: ~8-11%/yr (item 7); ITP 2019: 9%/yr | Use 9% for Tokelau runs. The generic default is a decision |
+| P7 (**applied**: 9%/yr) | Demand growth | 3%/yr (TODO) | Tokelau 2008-13: ~8-11%/yr (item 7); ITP 2019: 9%/yr | Use 9% for Tokelau runs. The generic default is a decision |
 | P8 | Load shape | generic, evening peak (placeholder) | IRENA 2013: sharp early-morning and evening peaks, flat across the week; 2008 peak/average 1.47-1.76. The current shape's peak/average is 1.77, but its morning peak is weak | Partly supported. Add a sharper morning peak (IRENA Fig. 3 is an image only) |
-| P9 | Freezer candidate load | 8 kWh/day (TODO) | Nukunonu community freezer: "approximate energy requirement of 25 kWh/day", compressor under 3 kW (IT Power 2013, p. 100) | Change to 25 kWh/day |
+| P9 (**applied**: 25) | Freezer candidate load | 8 kWh/day (TODO) | Nukunonu community freezer: "approximate energy requirement of 25 kWh/day", compressor under 3 kW (IT Power 2013, p. 100) | Change to 25 kWh/day |
 | P10 | Non-electric energy | 3x electric (TODO) | IRENA 2013: kerosene and LPG for cooking, petrol for over 1,000 outboard boats; no volumes in text (Fig. 2 is an image) | Keep TODO |
 | P11 | Solar O&M | PV USD 70/kW/yr + battery USD 10/kWh/yr | ITP: solar O&M NZD 12,000/yr per atoll (~USD 9,700), excluding replacements (IT Power 2013, p. 31). The config gives ~USD 57,000/yr for a Fakaofo-size system | The config is ~6x ITP. Review it; ITP's figure covers labour and consumables only |
 | P12 | USD/NZD 2012 | 0.80 (unsourced) | 2012 average 0.810 (OFX); 0.82 on 23 Oct 2012 (IRENA 2013) | Keep; add the citation |
@@ -302,27 +307,35 @@ Found by reading IT Power (2013) and IRENA (2013), plus targeted searches.
 - **V1 (applied 2026-10-03). Battery comparison is not like for like.** The app's validation table and
   `run_tokelau.py` compare the model's *nominal* battery with Source A, which is
   effectively *usable*.
-  - Like-for-like, the recommended 1,481 kWh nominal (740 usable) is **0.44x** Fakaofo's
-    3,379 kWh nominal (1,690 usable).
-  - PV (315 kWp) is 0.95x Fakaofo's 330 kWp.
+  - With the 2026-10-03 assumptions (9% growth, 3% fade), the recommended system is 663 kWp /
+    2,664 kWh nominal. That is 2.0x Fakaofo's PV and 0.79x its battery.
+  - Before the growth change (3%), it was 315 kWp / 1,481 kWh: 0.95x PV and 0.44x battery.
   - Now both the app table and `run_tokelau.py` compare nominal with nominal and usable with
     usable, per atoll.
 - **V2 (applied 2026-10-03). The "real system" in `run_tokelau.py` is too small.** It uses 300 kWp / 1,350 kWh
   nominal, which is Source A misread as nominal. The IRENA per-atoll sizes are, for example,
-  Fakaofo 330 kWp / 3,379 kWh nominal. With those sizes, the real system at 600 kWh/day and
-  3%/yr growth stays above 95% for 15 years at 4-8% fade. That differs from what actually
-  happened (inadequate by ~8 yrs), which points to the missing demand growth (P7, V3).
+  Fakaofo 330 kWp / 3,379 kWh nominal.
+  - At 3%/yr growth, the real system stayed above 95% for 15 years.
+  - **At the sourced 9%/yr, it first drops below 95% in year 9** (year 7 at 720 kWh/day),
+    whatever the fade rate (3-8%). That matches the actual upgrade after ~8 yrs (RNZ 2020).
+  - So growth, not battery fade, explains why the system became inadequate.
 - **V3. Validation loads.** 600/720 kWh/day sits within the 2008 measured range (553-699),
   but 2013 demand was ~850-940 kWh/day (Atafu, Nukunonu).
-- **V4. A new validation test is possible.** Simulate each real system (IRENA sizes) at its
+- **V4 (applied 2026-10-03: `run_tokelau.py` section 8). A new validation test is possible.** Simulate each real system (IRENA sizes) at its
   2013 demand with NASA weather, and compare the renewable share with the **measured** 2013
   solar fractions (Atafu 92.5%, Nukunonu 93.5%) and the design fractions (89-91%).
+  - **Result:** on 2023 weather the model gives ~99%. On the actual Nov 2012-May 2013 NASA
+    weather it gives 96.4-97.1% for Atafu and 94.8-96.1% for Nukunonu (the ranges are 60% and
+    50% minimum SOC). That is optimistic by ~1-4.6 points.
+  - Documented but not modelled: Nukunonu's ~1-week lightning shutdown (p. 9), morning
+    shading at Atafu (p. 122), and generator charging and equalising.
 - **V5. A payback cross-check.** ITP estimates a "saving of around NZD 15m through the
   reduction in diesel usage over the life of the project" (25 yrs, 2013 dollars,
   undiscounted; IT Power 2013, p. 35). That is ~NZD 0.6M/yr across three atolls, giving a
   simple payback of ~14 yrs at NZD 8.5M or ~12 yrs at NZD 7M, above the ~9 yrs CleanTechnica
-  reported. The model now gives 19.5-23.7 yrs at USD 1.87/L for the real systems; its O&M
-  for those large banks (P11) is a likely reason it is longer.
+  reported. The model gives 19.5-23.7 yrs at USD 1.87/L for the real systems with config O&M,
+  and **13.8-16.7 yrs with ITP's NZD 12,000/yr solar O&M** (P11). So O&M explains much of the
+  gap.
 
 ---
 

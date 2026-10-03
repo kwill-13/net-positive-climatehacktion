@@ -18,7 +18,10 @@ def test_replacement_resets_capacity_in_that_year(load_kw, pv_per_kw):
     assert ys[5].battery_kwh == pytest.approx(battery_capacity(6, 800, "lead_acid"))
     assert ys[6].battery_year == 1 and ys[6].battery_kwh == pytest.approx(800)
     assert ys[9].battery_kwh == pytest.approx(battery_capacity(4, 800, "lead_acid"))
-    assert ys[6].renewable_share > ys[5].renewable_share
+    # Replacing beats not replacing in the same year (demand growth can still pull the share
+    # below the previous year's, so compare like years).
+    never = run_years(200, 800, load_kw, pv_per_kw, "lead_acid", years=10)
+    assert ys[6].renewable_share > never[6].renewable_share
 
 
 def test_demand_grows(load_kw, pv_per_kw):

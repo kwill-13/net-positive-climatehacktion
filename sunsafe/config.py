@@ -100,14 +100,19 @@ BATTERY = {
 # Used by sunsafe/lifecycle/degradation.py. PLACEHOLDERS until sourced.
 BATTERY_ANNUAL_FADE = {
     "lithium": 0.025,            # 0-1 per year. TODO: source
-    "lead_acid": 0.06,           # 0-1 per year. TODO: source
+    # 0-1 per year. Derived: Exide Classic OPzS design life 20 yrs at 20 degC to 80% C10 (~1.1%/yr); Tokelau
+    # battery rooms 31-34 degC [ITP13 pp.58,88,117] age faster; the banks were replaced after ~8 yrs [RNZ20],
+    # and reaching 80% by year 8 implies ~2.8%/yr. 0.06 (the previous placeholder) kept as a pessimistic case.
+    "lead_acid": 0.03,
 }
 
 # ------------------------------------------------------------------ demand ----
 
-DEMAND_GROWTH_PER_YEAR = 0.03    # 0-1 per year, compounding; same default as Inputs.demand_growth_per_year.
-                                 # TODO: source. ITP (2019) reported ~9%/yr historical load growth in
-                                 # Tokelau (SOURCES.md item 7); 3% kept as a generic default.
+DEMAND_GROWTH_PER_YEAR = 0.09    # 0-1 per year, compounding. Sourced for Tokelau: 2008->2013 demand grew
+                                 # ~8-11%/yr (553-601 -> 837-899 kWh/day) [IRENA13 Table 1][ITP13 pp.14-19];
+                                 # ITP 2019 reported "9% per year historically" [SOURCES.md item 7].
+                                 # Inputs.demand_growth_per_year (interface default 0.03) overrides this in
+                                 # run_sunsafe; the app and Tokelau script pass this value.
 
 PV_ANNUAL_DERATE = 0.005         # 0-1 per year, compounding. Sourced: median ~0.5%/yr [NREL-DEG]
 
@@ -142,7 +147,11 @@ GEN_OM_USD_PER_KWH_LOW = 0.02
 # ---------------------------------------------------------------- costs ------
 # Installed costs, USD.
 
-PV_COST_USD_PER_KW = 2500.0           # USD/kWp installed. TODO: source (Pacific remote-island projects)
+# USD/kWp installed (PV + inverters + BOS + install). Range sourced, point estimate still uncertain:
+#   low  ~2,500: Tokelau 2020 upgrade back-calculation [RNZ20] (2,500-3,300 depending on Li-ion price)
+#   high ~4,000: Tokelau 2012, (USD 6.95M [IRENA13] - ~USD 3.0-3.2M batteries [ITP13]) / 891 kWp = 4,200-4,400
+PV_COST_USD_PER_KW = 2500.0
+PV_COST_USD_PER_KW_HIGH = 4000.0      # high case for reports (SOURCES.md P2)
 BATTERY_COST_USD_PER_KWH = {
     # USD/kWh nominal installed. Sourced: Tokelau 2020 back-calculation [RNZ20]: NZD 9M = USD 5.7M
     # for 3 x 210 kW PV + 3 x 2 MWh Li-ion => ~USD 690/kWh if PV is USD 2,500/kW. Global turnkey
@@ -214,7 +223,7 @@ FUEL_SHOCK_2026 = [(m, p / _FUEL_SHOCK_BASE) for m, p in FUEL_SHOCK_APIA_WST_PER
 # --------------------------------------------------------------- headroom ----
 # Candidate new electric loads that could use surplus solar: (description, kWh/day). TODO: source.
 CANDIDATE_NEW_LOADS = [
-    ("Community freezer", 8.0),
+    ("Community freezer", 25.0),          # sourced: Nukunonu community freezer ~25 kWh/day [ITP13 p.100]
     ("Electric cooking at the school", 12.0),
     ("Charging for electric outboard motors", 15.0),
 ]
