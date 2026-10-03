@@ -39,6 +39,13 @@ SOURCES
             https://www.energy-storage.news/battery-storage-system-prices-continue-to-fall-sharply-bnef-and-ember-reports-find/
   [HOMER]   HOMER Energy, diesel O&M costs (~USD 0.02/kWh, low case)
             https://homerenergy.com/docs/knowledgebase/article/diesel-om-costs/
+  [ITP13]   IT Power (2013), Tokelau Renewable Energy Project Review (Financial + Technical), for
+            NZ MFAT. Cite by page; the PDF is marked "Confidential - client only", so do not commit it.
+            https://www.pcreee.org/publication/tokelau-renewable-energy-project-review
+  [IRENA13] IRENA (2013), Pacific Lighthouses: Tokelau (per-atoll PV/battery, 2008 demand)
+            https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2013/Sep/Tokelau.pdf
+  [OFX]     OFX yearly average exchange rates (NZD/USD 2012 = 0.810)
+            https://www.ofx.com/en-nz/forex-news/historical-exchange-rates/yearly-average-rates/
   [CT13]    CleanTechnica 2013, Tokelau 100% solar: NZ advance NZD 7M (total project NZD 8.5M
             per [MAT]), ~9-year simple payback (validation only; see SOURCES.md)
             https://cleantechnica.com/2013/10/06/an-island-tokelau-powered-100-by-solar-energy/
@@ -85,7 +92,7 @@ BATTERY = {
         "min_soc": 0.5,          # 0-1, 50% DoD is the usual limit for acceptable life
         "round_trip_eff": 0.80,  # 0-1
         "life_years": 8,         # years. Sourced: Tokelau's 2012 lead-acid bank was replaced
-                                 # with Li-ion in 2020 [RNZ20]
+                                 # with Li-ion in 2020 [RNZ20]; ITP's tariff model also uses 8 yrs [ITP13 p.27]
     },
 }
 
@@ -107,14 +114,18 @@ PV_ANNUAL_DERATE = 0.005         # 0-1 per year, compounding. Sourced: median ~0
 # ----------------------------------------------------------------- diesel ----
 
 DIESEL_KWH_PER_LITRE = 3.0       # kWh electric per litre. Sourced: Maldives outer islands
-                                 # 0.28-0.37 L/kWh = 2.7-3.6 kWh/L [POISED]
+                                 # 0.28-0.37 L/kWh = 2.7-3.6 kWh/L [POISED]; ITP assumed 3 kWh/L for Tokelau
+                                 # [ITP13 p.28]
 
 # Delivered diesel price for Tokelau, USD/litre. Derived, not quoted (SOURCES.md item 5):
 # ~200 L/day per atoll and NZD ~0.8-1M+/yr fuel [MAT][CT13] (SPC16 could not be checked) imply
 # NZD ~2.5-4.6/L = USD ~2.0-3.7/L at ~0.80 USD/NZD (2012); 2.70 sits inside that range.
+# REVIEW (SOURCES.md P1): that spend covers ALL fuel imports, so 2.70 is likely too high. Landed
+# diesel in 2013 was NZD 1.16-2.00+/L; ITP used NZD 1.50 [ITP13 pp.28-29]. Value unchanged pending decision.
 # Lower bound for remote islands: Apia retail 2026 USD 1.17 (Jan), 1.93 (Jun peak), 1.61 (Oct) [APIA].
 TOKELAU_DIESEL_PRICE_USD_PER_L = 2.70
-NZD_TO_USD_2012 = 0.80           # USD per NZD, 2012 (approximate, as used above)
+NZD_TO_USD_2012 = 0.80           # USD per NZD, 2012. Sourced: 2012 average 0.810 [OFX]; 0.82 on
+                                 # 23 Oct 2012 [IRENA13]
 
 # Generator O&M per kWh generated, applied to diesel-only AND hybrid generator output.
 # Sourced: USD 0.04/kWh [ADB-NRU]; HOMER default ~0.02 is the low case [HOMER].
@@ -130,7 +141,9 @@ BATTERY_COST_USD_PER_KWH = {
     # for 3 x 210 kW PV + 3 x 2 MWh Li-ion => ~USD 690/kWh if PV is USD 2,500/kW. Global turnkey
     # is USD 117/kWh [BNEF25], so remote Pacific carries a large premium.
     "lithium": 600.0,
-    "lead_acid": 350.0,               # USD/kWh nominal installed. TODO: source
+    # USD/kWh nominal. Sourced: ITP battery replacement NZD 3.75-4.0M [ITP13 pp.27,32] for 8,602 kWh
+    # nominal (C20) [IRENA13 Table 2] = NZD 436-465/kWh = USD ~353-377/kWh (2013) at [OFX] 0.81.
+    "lead_acid": 350.0,
 }
 
 DISCOUNT_RATE = 0.08             # 0-1 per year, real. Sourced: ADB uses 6-9% in Pacific analyses

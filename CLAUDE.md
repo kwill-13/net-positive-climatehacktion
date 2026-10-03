@@ -35,6 +35,7 @@ work in year 15, and turns the plan into a funding case.
 - Only `app/components/layout.py` imports the model. Pages read fields off `Results`.
 - Results are cached with `st.cache_data`; a new site fetches NASA POWER weather (~15 s).
 - Default diesel price is USD 2.70/L (Tokelau delivered price, derived; see SOURCES.md item 5).
+  UNDER REVIEW (SOURCES.md P1): likely too high; 2013 landed diesel was NZD 1.16-2.00+/L.
   Below USD 2.34/L (8%) or 2.11/L (6%) diesel-only is cheaper per kWh. Apia retail 2026
   (USD 1.17-1.93/L) is a lower bound, not a site price.
 - Shows the recommended strategy (from the `Recommended:` warning), model notes, a stale-inputs warning,

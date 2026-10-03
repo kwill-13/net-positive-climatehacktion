@@ -54,15 +54,32 @@ Off The Grid, TendersGo and delahyde.com are weaker. Where they overlap, cite th
     a browser on 2026-10-03.
 - **Per atoll,** "over 8 MWh" / 3 = about 2.7 MWh. `scripts/run_tokelau.py` and the app use
   this as "~2,700 kWh (Source B)".
-- **Caveat: the two battery sources disagree by about 2x.** Both come from ITP Renewables.
-  - Source A gives 3 x 1.1-1.6 MWh = 3.3-4.8 MWh in total.
-  - Source B gives over 8 MWh in total.
-- **Arithmetic check, which does not settle the conflict:**
-  - Source B / 1,344 batteries = about 6 kWh per battery. That fits large 2 V lead-acid
-    cells of around 3,000 Ah.
-  - Source A gives about 2.5-3.6 kWh per battery.
-  - The gap could be in how capacity is counted (nominal vs rated, or usable). The cell
-    specification in the IT Power 2013 review (item 8) would settle it.
+- **The 2x conflict with Source A is resolved: Source B is nominal capacity, and Source A
+  matches the usable half.** Primary data comes from IRENA (2013), *Pacific Lighthouses:
+  Tokelau*, Table 2, p. 7 ("provided through communication by Government of Tokelau"). Each
+  48 V cluster has 3,200 Ah C20 cells in parallel pairs, giving 6,400 Ah (p. 6).
+
+  | Atoll | PV kWp | Battery Ah at 48 V | Nominal kWh (C20) | 50% usable kWh |
+  |---|---|---|---|---|
+  | Fakaofo | 330 | 70,400 (11 clusters) | 3,379 | 1,690 |
+  | Atafu | 297 | 57,600 (9 clusters) | 2,765 | 1,382 |
+  | Nukunonu | 264 | 51,200 (8 clusters) | 2,458 | 1,229 |
+  | **Total** | **891** | 179,200 | **8,602** | 4,301 |
+
+  - **Totals:** the nominal total, 8.6 MWh, matches Source B ("over 8 MWh").
+  - **Per atoll:** the usable figures, 1.23-1.69 MWh, match Source A's 1.1-1.6 MWh.
+    - Source A labels its range "[nominal]", but the numbers fit usable capacity at the
+      50% depth of discharge that lead-acid systems are designed for.
+  - **Cross-checks:**
+    - Cell count: 28 clusters x 48 cells = 1,344, the reported battery count.
+    - Cluster counts: 11/9/8 matches the battery charts in IT Power (2013), Figs 28, 61
+      and 94.
+    - Cell model: the battery photo (IT Power 2013, Fig. 67) appears to show Exide/GNB
+      "Classic 22 OPzS 2750 LA", a 2 V tubular flooded cell rated about 3,000 Ah at C10.
+      That reading of the photo is not yet confirmed.
+- **What this means for the model and app:** compare SunSafe's *nominal* `battery_kwh` with
+  2.5-3.4 MWh per atoll, not with Source A. Equivalently, compare usable capacity
+  (nominal x 0.5 for lead-acid) with Source A. See Part 1b, item V1.
 
 ## 3. Reported ~9-year payback: Verified
 
@@ -104,8 +121,24 @@ using three statements:
 - So the implied price is about NZD 2.5-4.6/L, or USD 2.0-3.7/L at ~0.80 USD/NZD. USD 2.70
   sits in that range.
 
+**Derivation flaw (found 2026-10-03):** the NZD 0.8-1M/yr spend is for *all* fuel imports.
+Tokelau also imports petrol (over 1,000 outboard boats), kerosene and LPG (IRENA 2013, pp. 2-4).
+Dividing all-fuel spend by power-diesel volume overstates the diesel price.
+
+**Direct evidence on the landed diesel price** (IT Power 2013, pp. 28-29):
+- "Diesel costs, landed on Tokelau, have been reported as: $1.16 per litre; $1.52 per litre
+  and 'over' $2.00 per litre."
+- "Diesel fuel wholesale in Samoa is around NZD 1.20 per litre"; ITP used **NZD 1.50/L**.
+- At 0.81 USD/NZD that is about USD 0.94-1.62+/L, with USD 1.22/L as ITP's central value
+  in 2013.
+- For 2026: the Apia retail range is USD 1.17-1.93/L, and Tokelau adds freight to that.
+
+**USD 2.70/L is therefore likely too high.** The model's breakeven is USD 2.34/L, so this
+decides the economic result. See Part 1b, item P1.
+
 Further caveats:
-- The 0.80 USD/NZD (2012) rate has no cited source.
+- USD/NZD 2012: the annual average was 0.810 (OFX), and IRENA (2013) gives USD 1 = NZD 1.22
+  on 23 Oct 2012 (0.82). The config's 0.80 is consistent.
 - The SPC 2016 page returned HTTP 403 when we tried to open it, so it is not verified here:
   https://www.spc.int/updates/blog/2016/11/zoom-tokelau-leads-world-in-renewable-energy
 
@@ -134,9 +167,38 @@ checked against its article.
   https://samoanewshub.com/2026/01/01/fuel-prices-increase-across-samoa-for-january-2026/
 - **Exchange rate:** WST/USD 0.3635 on 3 Oct 2026, https://www.currency.me.uk/convert/wst/usd
 
-## 7. Measured data from the real system: Mostly missing
+## 7. Measured data from the real system: Partly available (2008 and 2012-13)
 
-Found (qualitative only):
+**Measured (IT Power 2013 and IRENA 2013):**
+- **2008 demand, diesel era** (IRENA 2013, Table 1, p. 4, from the Tokelau Energy Office):
+
+  | Atoll | kWh/yr | kWh/day | Peak kW | Peak / average | Diesel L/yr | Implied kWh/L |
+  |---|---|---|---|---|---|---|
+  | Fakaofo | 255,100 | 699 | 51.2 | 1.76 | 94,540 | 2.70 |
+  | Atafu | 201,800 | 553 | 38.0 | 1.65 | 100,470 | 2.01 |
+  | Nukunonu | 219,400 | 601 | 36.7 | 1.47 | 76,650 | 2.86 |
+
+  - The table's fuel total (271,660 L) disagrees with IRENA's own text ("around 160,000
+    litres").
+  - Load curves have "sharp load peaks early in the morning and in the evening" and barely
+    change over the week (p. 6).
+- **2012-13 operation, solar era.** Measured Nov 2012-May 2013, scaled to a year (IT Power
+  2013, pp. 14-24):
+  - Total generation (PV + diesel): Atafu 343,898 kWh/yr (942/day), Nukunonu 320,403
+    (878/day), Fakaofo 491,205 (1,346/day).
+    - Fakaofo's figure is estimated, because its SD cards were missing.
+    - ITP's sales-based model gives about 248,000 kWh/yr (680/day) for Fakaofo instead
+      (p. 28).
+  - **Solar fraction measured:** Atafu 92.5%, Nukunonu 93.5%, Fakaofo ~89%. The designed
+    fractions were 89/91/86% (p. 8).
+  - Diesel use after solar: Atafu 23.7 L/day, Nukunonu 18.9, Fakaofo 49.3 (estimated at
+    3 kWh/L).
+  - PV specific yield (wet season, grid-tied arrays only): 1,060-1,198 kWh/kWp/yr.
+- **Implied demand growth, 2008 to 2013:** Atafu 553 to 942 kWh/day (~11%/yr), Nukunonu
+  601 to 878 (~8%/yr). This is consistent with ITP's 2019 "9% per year historically".
+  - Caveat: 2013 generation includes battery losses (about 5%) and is scaled from 7 months.
+
+Found (qualitative):
 - **Battery replacement:** RNZ, "New solar system for Tokelau", 4 Mar 2020:
   https://www.rnz.co.nz/international/pacific-news/410925/new-solar-system-for-tokelau
   - NZD 9M (USD 5.7M) for an extra 210 kW of PV and 2 MWh of Li-ion on each of Atafu,
@@ -159,23 +221,24 @@ Found (qualitative only):
   page: "Annual imports of fuel in 2003 totalled 162,000 litres of diesel":
   https://www.tokelau.org.nz/Tokelau+Government/Government+Departments/Energy+and+Telecommunications/Energy.html
 
-Missing:
-- A diesel-use time series after 2012.
-- Measured battery capacity or state of health over time.
+Still missing:
+- Any data after mid-2013: diesel use, renewable share and battery state of health by year.
 - The actual date the lead-acid banks were retired.
-- Measured renewable share by year.
 
-## 8. Tokelau technical review: Located, not read
+## 8. Tokelau technical review: Read (2026-10-03)
 
 - IT Power, *Tokelau Renewable Energy Project Review*, 2013, 136 pp. It is a
   post-installation review of the financial and technical performance of the three systems.
   - Listing: https://www.pcreee.org/publication/tokelau-renewable-energy-project-review
   - PDF: https://prdrse4all.spc.int/system/files/energy_tokelau_pv_system_review_-_final.pdf
-- The PDF returns HTTP 403 to automated access, so nobody on the team has read it yet.
-  **Download it in a browser.** It is the best source for:
-  - per-atoll PV and battery sizes (items 1-2),
-  - early performance data (item 7),
-  - the payback method (item 3).
+- Obtained by the team in a browser (the PDF returns HTTP 403 to automated access) and
+  read in full.
+  - **Do not commit the PDF.** Its cover marks it "Confidential - client only", even though
+    it is publicly hosted. Cite it by page.
+- **What it contributed:** measured 2012-13 performance (item 7), landed diesel prices
+  (item 5), and cost, life and O&M evidence (Part 1b).
+- **What it does not contain:** the ~9-year payback method (item 3), and per-atoll battery
+  kWh (those come from IRENA 2013).
 - Earlier reports listed on the Tokelau Government Energy page, which we have not obtained:
   - "Grid-connected Photovoltaic Electricity Supply on Tokelau - Hardware Specification and
     Feasibility Study Report"
@@ -184,18 +247,69 @@ Missing:
 
 ## Limitations to state
 
-1. **Battery size:** two ITP sources disagree by about 2x. Source A gives 1.1-1.6 MWh per
-   atoll (3.3-4.8 MWh total); Source B gives over 8 MWh total (about 2.7 MWh per atoll). A
-   third, uncited page gives 1.4-1.9 MWh per atoll. The IT Power review is the tie-breaker,
-   and nobody has read it yet.
+1. **Battery size:** resolved. Per atoll, nominal is 2.46-3.38 MWh and usable is
+   1.23-1.69 MWh (IRENA 2013). Source A is usable capacity; Source B is the nominal total.
+   The current validation compares the model's *nominal* battery with Source A, which is
+   not like for like (Part 1b, V1).
 2. **Payback:** the ~9 years is reported without its method. The project cost was NZD 8.5M,
    of which NZD 7M was New Zealand's advance. Modelled real-system payback is 10.9 years at
    NZD 7M and 13.3 years at NZD 8.5M.
-3. **Diesel price:** USD 2.70/L is derived from fuel volume and fuel spend, reading
-   "200 L/day" as per atoll. The source figures imply USD 2.0-3.7/L.
-4. **No measured performance data:** there is none for 2012-2020 (diesel use, battery
-   health, renewable share). Decline is described only qualitatively.
-5. **Load growth:** reported historically as 9%/yr; the model assumes a 3%/yr placeholder.
+3. **Diesel price:** USD 2.70/L divides all-fuel spend by diesel volume, so it is likely
+   too high. Landed diesel in 2013 was NZD 1.16-2.00+/L (IT Power 2013). This decides
+   whether solar beats diesel in the model (Part 1b, P1).
+4. **Measured performance stops in 2013.** There is no data on 2014-2020 decline.
+5. **Load growth:** 8-11%/yr implied for 2008-13, and 9%/yr reported by ITP; the model's
+   default is 3%/yr.
+6. **Demand level:** real 2013 demand was about 850-940 kWh/day (Atafu, Nukunonu), above
+   the 600-720 kWh/day validation loads.
+
+---
+
+# Part 1b: Evidence for placeholders, and validation fixes (2026-10-03)
+
+Found by reading IT Power (2013) and IRENA (2013), plus targeted searches. **Nothing here
+has been applied to `config.py` or the app yet.** Each row needs a decision from William.
+
+## Placeholders and unsourced values
+
+| ID | Item | Current | Evidence found | Suggestion |
+|---|---|---|---|---|
+| P1 | Diesel price (Tokelau) | USD 2.70/L | Landed 2013: NZD 1.16 / 1.52 / >2.00 per L; ITP used NZD 1.50 (IT Power 2013, pp. 28-29) = USD ~1.22. Apia retail 2026: USD 1.17-1.93. The 2.70 derivation divides all-fuel spend by diesel volume (item 5) | Re-derive. Use a sourced delivered price for 2026 (Apia retail plus freight) and keep 2.70 as a high scenario. **This decides solar vs diesel:** breakeven is USD 2.34/L |
+| P2 | PV capex | USD 2,500/kW (TODO) | Tokelau 2012 back-calculation: USD 6.95M total (IRENA 2013) minus ~USD 3.0-3.2M batteries (P3) over 891 kWp = **~USD 4,200-4,400/kWp** including inverters, BOS and install. Tokelau 2020 (RNZ): USD 2,500-3,300/kWp, depending on the Li-ion price assumed. Tuvalu 2024: USD 6M for 500 kW + 2 MWh (pv magazine), project-level. Global utility average: USD 691/kW (IRENA 2024) | Keep 2,500 as the low case and add ~4,000 as a remote-atoll high case. Mark sourced as a range |
+| P3 | Lead-acid capex | USD 350/kWh (TODO) | ITP's battery replacement estimate: NZD 3.75-4.0M (IT Power 2013, pp. 27, 32) for 8,602 kWh = NZD 436-465/kWh = **USD 353-377/kWh** (2013) | Keep 350 and mark it sourced |
+| P4 | Lead-acid life | 8 yrs (sourced) | ITP's tariff model also uses 8 yrs (IT Power 2013, p. 27). Replaced after ~8 yrs (RNZ 2020) | No change; add the citation |
+| P5 | Lead-acid fade | 6%/yr (TODO) | Exide Classic OPzS: 20-yr design life at 20 °C to 80% C10, which is ~1.1%/yr at 20 °C. Tokelau battery rooms measured 31-34 °C (IT Power 2013, pp. 58, 88, 117), so faster ageing is expected. Reaching 80% after ~8 yrs implies ~2.8%/yr. ITP 2019 cites a "gradual decrease in battery capacity" | Consider 3%/yr as the base case, with 6% as pessimistic. The 0.04-0.08 sensitivity already brackets this |
+| P6 | Li-ion fade | 2.5%/yr (TODO) | No Pacific-specific source found. Lab literature gives wide ranges | Keep TODO |
+| P7 | Demand growth | 3%/yr (TODO) | Tokelau 2008-13: ~8-11%/yr (item 7); ITP 2019: 9%/yr | Use 9% for Tokelau runs. The generic default is a decision |
+| P8 | Load shape | generic, evening peak (placeholder) | IRENA 2013: sharp early-morning and evening peaks, flat across the week; 2008 peak/average 1.47-1.76. The current shape's peak/average is 1.77, but its morning peak is weak | Partly supported. Add a sharper morning peak (IRENA Fig. 3 is an image only) |
+| P9 | Freezer candidate load | 8 kWh/day (TODO) | Nukunonu community freezer: "approximate energy requirement of 25 kWh/day", compressor under 3 kW (IT Power 2013, p. 100) | Change to 25 kWh/day |
+| P10 | Non-electric energy | 3x electric (TODO) | IRENA 2013: kerosene and LPG for cooking, petrol for over 1,000 outboard boats; no volumes in text (Fig. 2 is an image) | Keep TODO |
+| P11 | Solar O&M | PV USD 70/kW/yr + battery USD 10/kWh/yr | ITP: solar O&M NZD 12,000/yr per atoll (~USD 9,700), excluding replacements (IT Power 2013, p. 31). The config gives ~USD 57,000/yr for a Fakaofo-size system | The config is ~6x ITP. Review it; ITP's figure covers labour and consumables only |
+| P12 | USD/NZD 2012 | 0.80 (unsourced) | 2012 average 0.810 (OFX); 0.82 on 23 Oct 2012 (IRENA 2013) | Keep; add the citation |
+| P13 | Generator kWh/L | 3.0 (sourced) | ITP assumed 3 kWh/L, range 2.5-3.6 (IT Power 2013, p. 28). 2008 implied 2.0-2.9 kWh/L (IRENA Table 1) | Keep. Real gensets may be worse, which favours solar |
+
+## Validation fixes
+
+- **V1. Battery comparison is not like for like.** The app's validation table and
+  `run_tokelau.py` compare the model's *nominal* battery with Source A, which is
+  effectively *usable*.
+  - Like-for-like, the recommended 1,481 kWh nominal (740 usable) is **about 0.44-0.60x** the
+    real system's nominal 2.46-3.38 MWh.
+  - PV (315 kWp) stays within the real 264-363 kWp range.
+- **V2. The "real system" in `run_tokelau.py` is too small.** It uses 300 kWp / 1,350 kWh
+  nominal, which is Source A misread as nominal. The IRENA per-atoll sizes are, for example,
+  Fakaofo 330 kWp / 3,379 kWh nominal. Using them changes the outputs of sections 3, 5
+  and 7.
+- **V3. Validation loads.** 600/720 kWh/day sits within the 2008 measured range (553-699),
+  but 2013 demand was ~850-940 kWh/day (Atafu, Nukunonu).
+- **V4. A new validation test is possible.** Simulate each real system (IRENA sizes) at its
+  2013 demand with NASA weather, and compare the renewable share with the **measured** 2013
+  solar fractions (Atafu 92.5%, Nukunonu 93.5%) and the design fractions (89-91%).
+- **V5. A payback cross-check.** ITP estimates a "saving of around NZD 15m through the
+  reduction in diesel usage over the life of the project" (25 yrs, 2013 dollars,
+  undiscounted; IT Power 2013, p. 35). That is ~NZD 0.6M/yr across three atolls, giving a
+  simple payback of ~14 yrs at NZD 8.5M or ~12 yrs at NZD 7M. This agrees with the model's
+  13.3 / 10.9 yrs, and sits above the ~9 yrs CleanTechnica reported.
 
 ---
 
@@ -242,7 +356,12 @@ Tags in [brackets] match the source block in `sunsafe/config.py`.
 - [ITP Renewables: Projects (over 8 MWh battery)](https://itprenewables.com/projects/) (Source B; quote in Part 1, item 2)
 - [TendersGo: Tokelau battery upgrade (~30 kW load per island)](https://www.tendersgo.com/post/tokelaus-90-solar-power-transition-battery-upgrade-project-6642) (lower reliability)
 - [IRENA: Tokelau energy profile](https://www.irena.org/-/media/Files/IRENA/Agency/Statistics/Statistical_Profiles/Oceania/Tokelau_Oceania_RE_SP.pdf)
-- [PCREEE: Tokelau Renewable Energy Project Review (IT Power, 2013)](https://www.pcreee.org/publication/tokelau-renewable-energy-project-review) (PDF not yet read)
+- [PCREEE: Tokelau Renewable Energy Project Review (IT Power, 2013)](https://www.pcreee.org/publication/tokelau-renewable-energy-project-review): read 2026-10-03; cite by page. The PDF is marked "Confidential - client only", so do not commit it.
+- [IRENA (2013): Pacific Lighthouses - Tokelau (per-atoll PV kWp and battery Ah; 2008 demand; NZD 8.5M = USD 6.95M)](https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2013/Sep/Tokelau.pdf)
+- [Exide Classic OPzS 22 OPzS 2750 LA product listing (2 V, ~3,000 Ah C10)](https://batterygroup.co.uk/batteries-by-type/lead-acid-batteries/7911/exide-classic-opzs-2v-22-opzs-2750-la-2v-3000ah) and [Exide Classic OPzS datasheet (20-yr design life at 20 °C to 80% C10)](https://www.exidegroup.com/eu/en/document/classic-opzs-datasheet)
+- [OFX: NZD/USD yearly average rates (2012: 0.810)](https://www.ofx.com/en-nz/forex-news/historical-exchange-rates/yearly-average-rates/)
+- [pv magazine (2024): ADB commissions 500 kW solar + 2 MWh storage in Tuvalu (USD 6M)](https://www.pv-magazine.com/2024/12/04/adb-commissions-500-kw-solar-project-with-2-mwh-of-storage-in-tuvalu/)
+- [pv magazine (2025): IRENA 2024 global utility solar installed cost USD 691/kW](https://www.pv-magazine.com/2025/07/23/global-average-solar-lcoe-stood-at-0-043-kwh-in-2024-says-irena/)
 
 **Pacific fuel crisis and diesel dependence** (proposal context)
 - [Devpolicy: Pacific fuel crisis exposes gap between targets and delivery](https://devpolicy.org/pacific-fuel-crisis-exposes-gap-between-renewable-targets-and-delivery-20260611/)

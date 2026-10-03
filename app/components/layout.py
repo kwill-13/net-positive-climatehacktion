@@ -61,7 +61,7 @@ def init(title, question=None, step=None):
     if MODEL_IMPORT_ERROR:
         st.sidebar.error(f"Model not loaded: {MODEL_IMPORT_ERROR}")
     if placeholders:
-        st.markdown('<div class="notice">Real model connected. Some assumptions (load shape, PV and lead-acid capex, battery fade, demand growth) are still placeholders. See "Model notes and assumptions".</div>',
+        st.markdown('<div class="notice">Real model connected. Some assumptions (load shape, PV capex, battery fade, demand growth) are still placeholders. See "Model notes and assumptions".</div>',
                     unsafe_allow_html=True)
     if r is not None and step not in (None, 0) and build_inputs() != r.inputs:
         st.warning("Inputs changed since the last run. Go to Site Setup and re-run the analysis to update these results.")

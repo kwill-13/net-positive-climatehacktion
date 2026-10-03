@@ -40,7 +40,7 @@ value is commented with its source, or with TODO if it is still a placeholder.
 
 Still placeholders (TODO):
 - **Load:** generic 24-hour profile shape.
-- **Capital costs:** PV $2,500/kWp; lead-acid battery $350/kWh.
+- **Capital costs:** PV $2,500/kWp (evidence suggests up to ~$4,000/kWp for remote atolls; see `SOURCES.md` P2).
 - **Ageing:** battery fade 2.5%/yr lithium, 6%/yr lead-acid; demand growth 3%/yr
   (historical growth was reported as 9%/yr; see `SOURCES.md` item 7).
 - **Headroom:**
@@ -59,12 +59,13 @@ Now sourced:
   applied to the site's own price. It peaks at x1.78 in June. `fuel_shock` now has
   **8 months** (2026-03 to 2026-10).
 - **Lithium:** battery $600/kWh; life 12 yrs.
-- **Lead-acid:** life 8 yrs.
+- **Lead-acid:** life 8 yrs; capex $350/kWh (ITP 2013 replacement estimate).
 - **Ageing:** PV derate 0.5%/yr; battery price decline 4%/yr.
 - **O&M:** PV $70/kW/yr; battery $10/kWh/yr.
 - **Discount rate:** 8%, with 6% as a sensitivity case.
 
-**Diesel price drives the result.** At Tokelau's USD 2.70/L the hybrid beats diesel-only
+**Diesel price drives the result, and USD 2.70/L is under review** (`SOURCES.md` P1: it likely
+overstates the delivered price). At Tokelau's USD 2.70/L the hybrid beats diesel-only
 ($0.82 vs $0.94 per kWh, payback 7.7 yrs). Below USD 2.34/L at 8%, or 2.11/L at 6%,
 diesel-only is cheaper per kWh; that includes Apia retail 2026 (USD 1.17-1.93/L). Use a delivered price for the site, not a capital-city
 retail price.

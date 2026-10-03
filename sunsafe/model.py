@@ -26,7 +26,7 @@ from sunsafe.load_profiles import estimate_daily_load_kwh, village_profile
 
 PLACEHOLDER_WARNINGS = [
     "Load profile is a generic placeholder shape (evening peak), not measured.",
-    "PV capex (USD 2,500/kW) and lead-acid capex (USD 350/kWh) are PLACEHOLDERS, not yet sourced.",
+    "PV capex (USD 2,500/kW) is a PLACEHOLDER; remote-atoll evidence suggests up to ~USD 4,000/kW.",
     "Battery fade rates and demand growth are PLACEHOLDER rates.",
     "Headroom: candidate new loads and non-electric energy use are PLACEHOLDERS.",
     "Fuel shock uses Apia 2026 retail price CHANGES (relative to March) applied to this site's "
