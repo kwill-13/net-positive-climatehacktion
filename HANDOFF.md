@@ -40,7 +40,8 @@ value is commented with its source, or with TODO if it is still a placeholder.
 Still placeholders (TODO):
 - **Load:** generic 24-hour profile shape.
 - **Capital costs:** PV $2,500/kWp; lead-acid battery $350/kWh.
-- **Ageing:** battery fade 2.5%/yr lithium, 6%/yr lead-acid; demand growth 3%/yr.
+- **Ageing:** battery fade 2.5%/yr lithium, 6%/yr lead-acid; demand growth 3%/yr
+  (historical growth was reported as 9%/yr; see `SOURCES.md` item 7).
 - **Headroom:**
   - Candidate loads: freezer 8, school cooking 12, outboard charging 15 kWh/day.
   - Non-electric energy: 3x electric load, with Fakaofo set at 1,800 kWh/day.
@@ -63,8 +64,8 @@ Now sourced:
 - **Discount rate:** 8%, with 6% as a sensitivity case.
 
 **Diesel price drives the result.** At Tokelau's USD 2.70/L the hybrid beats diesel-only
-(about $0.82 vs $0.94 per kWh, payback ~8 yrs). Below about USD 2.3/L at 8%, or 2.1/L at
-6%, diesel-only is cheaper per kWh. Use a delivered price for the site, not a capital-city
+($0.82 vs $0.94 per kWh, payback 7.7 yrs). Below USD 2.34/L at 8%, or 2.11/L at 6%,
+diesel-only is cheaper per kWh; that includes Apia retail 2026 (USD 1.17-1.93/L). Use a delivered price for the site, not a capital-city
 retail price.
 
 **Demo checklist.** These are app-side changes; the model stays frozen. Items were checked
@@ -110,7 +111,9 @@ USD 2.70/L (from `python scripts/run_tokelau.py`):
 - **Cost:** capex ~$1.31M; payback ~7.7 yrs; breakeven diesel price $2.34/L (8%) or
   $2.11/L (6%).
 - **Strategy:** about 13% cheaper over 15 years than building big ($1.83M vs $2.11M NPV).
-- **Validation:** inside the real 2012 install's range (265-365 kWp, 1.1-1.6 MWh).
+- **Validation:** inside the real 2012 install's range per Source A (265-365 kWp, 1.1-1.6 MWh
+  per atoll). The battery is about 0.56x Source B (over 8 MWh total, ~2.7 MWh per atoll). Both
+  sources are quoted in `SOURCES.md`.
 
 For a strategy comparison screen, `run_sunsafe_detailed(inputs)` returns
 `(results, comparison)`:

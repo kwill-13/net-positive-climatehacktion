@@ -107,8 +107,9 @@ PV_ANNUAL_DERATE = 0.005         # 0-1 per year, compounding. Sourced: median ~0
 DIESEL_KWH_PER_LITRE = 3.0       # kWh electric per litre. Sourced: Maldives outer islands
                                  # 0.28-0.37 L/kWh = 2.7-3.6 kWh/L [POISED]
 
-# Delivered diesel price for Tokelau, USD/litre. Sourced: ~200 L/day per atoll and
-# NZD 800k-1M+/yr fuel [SPC16][MAT] => NZD 3.1-3.65/L, x ~0.80 USD/NZD (2012) => ~USD 2.70/L.
+# Delivered diesel price for Tokelau, USD/litre. Derived, not quoted (SOURCES.md item 5):
+# ~200 L/day per atoll and NZD ~0.8-1M+/yr fuel [MAT][CT13] (SPC16 could not be checked) imply
+# NZD ~2.5-4.6/L = USD ~2.0-3.7/L at ~0.80 USD/NZD (2012); 2.70 sits inside that range.
 # Lower bound for remote islands: Apia retail 2026 USD 1.17 (Jan), 1.93 (Jun peak), 1.61 (Oct) [APIA].
 TOKELAU_DIESEL_PRICE_USD_PER_L = 2.70
 NZD_TO_USD_2012 = 0.80           # USD per NZD, 2012 (approximate, as used above)

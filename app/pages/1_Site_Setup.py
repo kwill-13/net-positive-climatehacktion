@@ -33,7 +33,7 @@ with L:
         tag("Input · Current diesel")
         s.diesel_lpd = st.number_input("Diesel consumption (L/day)", value=float(s.diesel_lpd), min_value=0.0)
         s.price = st.number_input("Delivered diesel price (USD/L)", value=float(s.price), min_value=0.0,
-                              help="Default 2.70 = Tokelau delivered price (team-sourced). Apia retail is about 1.10, where solar does not pay back.")
+                              help="Default 2.70 = Tokelau delivered price (derived; see SOURCES.md). Apia retail 2026 was USD 1.17-1.93/L; below about USD 2.34/L diesel-only is cheaper per kWh.")
         s.known_load = st.checkbox("I know the daily electricity load", s.known_load)
         if s.known_load:
             s.load_kwh = st.number_input("Daily load (kWh/day)", value=float(s.load_kwh), min_value=1.0)

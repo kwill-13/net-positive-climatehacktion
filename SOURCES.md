@@ -40,17 +40,29 @@ Off The Grid, TendersGo and delahyde.com are weaker. Where they overlap, cite th
   - 100% RE Atlas (posted 25 Jan 2019): "1344 batteries in 48V banks", and "up to 2 days of
     energy without any solar input". https://www.100-percent.org/tokelau/
 
-## 2. ~8 MWh lead-acid across the three atolls (Source B): Partly verified
+## 2. Over 8 MWh lead-acid across the three atolls (Source B): Verified
 
-- Team-supplied source: ITP Renewables, Projects page ("over 8 MWh battery").
-  https://itprenewables.com/projects/
-  The page did not load its project text for our automated check, so we have not seen the
-  figure ourselves. Open it in a browser and copy the exact wording here before citing.
-- **Caveat: the two battery sources disagree by about 2x.** Source A gives 3 x 1.1-1.6 MWh =
-  3.3-4.8 MWh in total. Source B gives "over 8 MWh". Both come from ITP Renewables.
-  - A possible explanation: Source A is per atoll and nominal, while Source B is a rated
-    total on a different basis. This is unconfirmed.
-  - The IT Power 2013 review (item 8) should settle it.
+- ITP Renewables, Projects page, entry "Tokelau Renewable Energy Project: Engineering design
+  and supervision for the world's first solar-powered nation". The entry is undated; the
+  site footer says (c) 2024. https://itprenewables.com/projects/
+  Quote: "With funding from the New Zealand Ministry of Foreign Affairs and Trade (MFAT),
+  approximately 1 MW of solar photovoltaics and over 8 MWh of lead-acid battery storage
+  capacity were installed across Tokelau's three atolls. ITP developed engineering designs
+  for the three atolls and provided owner's engineering services throughout project
+  delivery."
+  - Our automated fetch did not load the project text. The quote was copied from the page in
+    a browser on 2026-10-03.
+- **Per atoll,** "over 8 MWh" / 3 = about 2.7 MWh. `scripts/run_tokelau.py` and the app use
+  this as "~2,700 kWh (Source B)".
+- **Caveat: the two battery sources disagree by about 2x.** Both come from ITP Renewables.
+  - Source A gives 3 x 1.1-1.6 MWh = 3.3-4.8 MWh in total.
+  - Source B gives over 8 MWh in total.
+- **Arithmetic check, which does not settle the conflict:**
+  - Source B / 1,344 batteries = about 6 kWh per battery. That fits large 2 V lead-acid
+    cells of around 3,000 Ah.
+  - Source A gives about 2.5-3.6 kWh per battery.
+  - The gap could be in how capacity is counted (nominal vs rated, or usable). The cell
+    specification in the IT Power 2013 review (item 8) would settle it.
 
 ## 3. Reported ~9-year payback: Verified
 
@@ -69,8 +81,8 @@ Off The Grid, TendersGo and delahyde.com are weaker. Where they overlap, cite th
   - Calls it an "$8.5 million solar power project".
   - Says New Zealand supported it "through an advance of $7 million".
 - **NZD 7M is New Zealand's advance; the full project cost was NZD 8.5M.**
-- `scripts/run_tokelau.py` section 7 reports the real system's payback at both costs: about
-  11 years at NZD 7M and about 13 years at NZD 8.5M, against the reported ~9.
+- `scripts/run_tokelau.py` section 7 reports the real system's payback at both costs: 10.9
+  years at NZD 7M and 13.3 years at NZD 8.5M, against the reported ~9.
 
 ## 5. Tokelau delivered diesel price USD 2.70/L: Partly verified (derived, not quoted)
 
@@ -171,12 +183,13 @@ Missing:
 
 ## Limitations to state
 
-1. **Battery size:** the two ITP figures disagree by about 2x (3.3-4.8 MWh vs over 8 MWh),
-   and a third, uncited page gives 1.4-1.9 MWh per atoll. The IT Power review is the
-   tie-breaker, and nobody has read it yet.
+1. **Battery size:** two ITP sources disagree by about 2x. Source A gives 1.1-1.6 MWh per
+   atoll (3.3-4.8 MWh total); Source B gives over 8 MWh total (about 2.7 MWh per atoll). A
+   third, uncited page gives 1.4-1.9 MWh per atoll. The IT Power review is the tie-breaker,
+   and nobody has read it yet.
 2. **Payback:** the ~9 years is reported without its method. The project cost was NZD 8.5M,
-   of which NZD 7M was New Zealand's advance. Modelled real-system payback is about 11
-   years at NZD 7M and about 13 years at NZD 8.5M.
+   of which NZD 7M was New Zealand's advance. Modelled real-system payback is 10.9 years at
+   NZD 7M and 13.3 years at NZD 8.5M.
 3. **Diesel price:** USD 2.70/L is derived from fuel volume and fuel spend, reading
    "200 L/day" as per atoll. The source figures imply USD 2.0-3.7/L.
 4. **No measured performance data:** there is none for 2012-2020 (diesel use, battery
@@ -226,7 +239,7 @@ Tags in [brackets] match the source block in `sunsafe/config.py`.
 - [One Step Off The Grid: Project to return Tokelau to 100% renewables](https://onestepoffthegrid.com.au/solar-and-battery-microgrid-project-to-return-tokelau-to-100-renewables/) (lower reliability; ITP author)
 - [Power Technology: Tokelau, world's first solar sufficient nation](https://www.power-technology.com/features/featuretokelau-world-first-solar-power-sufficient-nation/)
 - [100% RE Atlas: Tokelau (battery banks, 2 days autonomy)](https://www.100-percent.org/tokelau/)
-- [ITP Renewables: Projects (over 8 MWh battery)](https://itprenewables.com/projects/) (not loaded by our check)
+- [ITP Renewables: Projects (over 8 MWh battery)](https://itprenewables.com/projects/) (Source B; quote in Part 1, item 2)
 - [TendersGo: Tokelau battery upgrade (~30 kW load per island)](https://www.tendersgo.com/post/tokelaus-90-solar-power-transition-battery-upgrade-project-6642) (lower reliability)
 - [IRENA: Tokelau energy profile](https://www.irena.org/-/media/Files/IRENA/Agency/Statistics/Statistical_Profiles/Oceania/Tokelau_Oceania_RE_SP.pdf)
 - [PCREEE: Tokelau Renewable Energy Project Review (IT Power, 2013)](https://www.pcreee.org/publication/tokelau-renewable-energy-project-review) (PDF not yet read)

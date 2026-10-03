@@ -33,8 +33,9 @@ work in year 15, and turns the plan into a funding case.
   If the import or run fails, it falls back to the fake model and shows the error in the sidebar.
 - Only `app/components/layout.py` imports the model. Pages read fields off `Results`.
 - Results are cached with `st.cache_data`; a new site fetches NASA POWER weather (~15 s).
-- Default diesel price is USD 2.70/L (Tokelau delivered price). Below about USD 2.3/L (8%) or
-  2.1/L (6%) diesel-only is cheaper per kWh. Apia retail (~USD 1.10) is a lower bound, not a site price.
+- Default diesel price is USD 2.70/L (Tokelau delivered price, derived; see SOURCES.md item 5).
+  Below USD 2.34/L (8%) or 2.11/L (6%) diesel-only is cheaper per kWh. Apia retail 2026
+  (USD 1.17-1.93/L) is a lower bound, not a site price.
 - Shows the recommended strategy (from the `Recommended:` warning), model notes, a stale-inputs warning,
   and a Fakaofo validation table (comparison only, not a pass/fail claim).
 - Never put engineering calculations in the app. Only app-side conversion: diesel litres to tCO2e
@@ -44,14 +45,17 @@ work in year 15, and turns the plan into a funding case.
 
 Recommended: 315 kWp / 1,481 kWh, planned battery replacement in year 10; capex ~USD 1.31M
 (placeholder costs); payback ~7.7 yrs vs ~9 reported; ~13% cheaper over 15 years than building big.
-Year-1 optimum (184 kWp / 750 kWh) undersizes against the real 2012 install (265-365 kWp, 1.1-1.6 MWh).
-Reference sources still need citing (see `SOURCES.md`).
+Year-1 optimum (184 kWp / 750 kWh) undersizes against the real 2012 install (Source A: 265-365 kWp,
+1.1-1.6 MWh per atoll; Source B: over 8 MWh total, ~2.7 MWh per atoll). Recommended battery is
+within Source A, about 0.56x Source B. Real-system payback: 10.9 yrs at NZD 7M (NZ advance),
+13.3 yrs at NZD 8.5M (total). All reference figures are quoted in `SOURCES.md`.
 
 ## Known limitations (state these in any write-up)
 
 - Placeholders: load shape, capital costs, battery fade, demand growth, headroom loads.
 - The two battery reference sources differ by about 2x.
-- Model capex is lower than the real project's; model payback differs from the reported ~9 years.
+- Model capex is lower than the real project's; modelled real-system payback is 10.9-13.3 yrs vs ~9 reported.
+- Historical load growth was reported as 9%/yr (ITP 2019); the model uses a 3%/yr placeholder.
 - Results depend heavily on delivered diesel price.
 - Interface gaps: no fuel-shock slider function, no per-load backup hours, no kWh/day per new use.
 

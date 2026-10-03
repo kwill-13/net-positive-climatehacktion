@@ -26,7 +26,8 @@ Responses are cached in `data/cache/` (gitignored), so later runs work offline. 
 download fails, the model falls back to a synthetic tropical profile and says so in its
 output.
 
-See [HANDOFF.md](HANDOFF.md) for how to call the model from your part.
+See [HANDOFF.md](HANDOFF.md) for how to call the model from your part, and
+[SOURCES.md](SOURCES.md) for every reference figure and its source.
 
 ## Repo map
 

@@ -8,14 +8,14 @@ Fakaofo (-9.38, -171.24) | weather source: nasa_power | PV yield 1491 kWh/kWp/yr
           curtailed 14% of PV | diesel 3,500 L/yr | capex $723,026 (placeholder costs) | backup @5 kW 67 h
   Real PV 265-365 kWp:            model is 0.70x of low end
   Source A battery 1100-1600 kWh:  model is 0.68x of low end
-  Source B battery ~2667 kWh (8 MWh / 3): model is 0.28x
+  Source B battery ~2667 kWh (over 8 MWh / 3): model is 0.28x
 
 --- Daily load 720 kWh/day ---
   Model:  PV    221 kWp | battery    900 kWh nominal (450 kWh usable) | renewable 95.2% | meets target: True
           curtailed 14% of PV | diesel 4,200 L/yr | capex $867,632 (placeholder costs) | backup @5 kW 80 h
   Real PV 265-365 kWp:            model is 0.83x of low end
   Source A battery 1100-1600 kWh:  model is 0.82x of low end
-  Source B battery ~2667 kWh (8 MWh / 3): model is 0.34x
+  Source B battery ~2667 kWh (over 8 MWh / 3): model is 0.34x
 
 ====================================================================================================
 2. SENSITIVITY: target x design year (lead_acid; battery kWh = nominal as installed;

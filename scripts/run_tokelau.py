@@ -17,8 +17,9 @@ Sections:
   7. Payback for all three atolls vs Tokelau's reported ~9-year simple payback.
 Fade, PV derate and growth come from sunsafe/lifecycle/degradation.py (placeholders in config.py).
 Reference figures (per atoll):
-  Source A: 265-365 kWp PV, 1.1-1.6 MWh nominal lead-acid.
-  Source B: ~8 MWh lead-acid across three atolls, i.e. ~2.7 MWh per atoll.
+  Source A: 265-365 kWp PV, 1.1-1.6 MWh nominal lead-acid (ITP / One Step Off The Grid 2019).
+  Source B: over 8 MWh lead-acid across three atolls, i.e. ~2.7 MWh per atoll (ITP Projects page).
+  Both are quoted in SOURCES.md items 1-2.
 """
 
 import sys
@@ -56,7 +57,7 @@ FADE_RATES = [0.04, 0.06, 0.08]
 PRICES_USD_PER_L = [1.10, 1.50, 2.00, 2.50, 2.70, 3.00, 3.50]
 DISCOUNT_RATES = [config.DISCOUNT_RATE, config.DISCOUNT_RATE_LOW]
 
-# The three atolls, ~200 L/day diesel each [SPC16] x 3 kWh/L = ~600 kWh/day each.
+# The three atolls, ~200 L/day diesel each [MAT] x 3 kWh/L = ~600 kWh/day each.
 ATOLLS = [("Fakaofo", LAT, LON), ("Nukunonu", -9.17, -171.83), ("Atafu", -8.54, -172.50)]
 ATOLL_DAILY_KWH = 600
 # Tokelau 2012 project, all three atolls (see SOURCES.md items 3-4):
@@ -302,7 +303,7 @@ def main():
               f"model is {_vs(opt.pv_kw, *REAL_PV_KW)}")
         print(f"  Source A battery {SOURCE_A_BATT_KWH[0]}-{SOURCE_A_BATT_KWH[1]} kWh:  "
               f"model is {_vs(opt.battery_kwh, *SOURCE_A_BATT_KWH)}")
-        print(f"  Source B battery ~{SOURCE_B_BATT_KWH:.0f} kWh (8 MWh / 3): "
+        print(f"  Source B battery ~{SOURCE_B_BATT_KWH:.0f} kWh (over 8 MWh / 3): "
               f"model is {_vs(opt.battery_kwh, SOURCE_B_BATT_KWH)}\n")
 
     sensitivity_table(pv_per_kw)
