@@ -2,7 +2,7 @@ import pytest
 
 from sunsafe.energy.simulate import simulate
 from sunsafe.energy.sizing import capital_recovery_factor, size_system
-from sunsafe.lifecycle.degradation import battery_capacity, demand
+from sunsafe.lifecycle.degradation import battery_capacity, demand, pv_derate
 
 
 @pytest.mark.parametrize("chem,target", [("lithium", 0.90), ("lead_acid", 0.95), ("lithium", 0.5)])
@@ -38,7 +38,7 @@ def test_design_year_sizing_meets_target_in_that_year(chem, load_kw, pv_per_kw):
     opt = size_system(load_kw, pv_per_kw, target, chem, 1.10, design_year=year)
     assert opt.meets_target and opt.design_year == year
     r = simulate(opt.pv_kw, battery_capacity(year, opt.battery_kwh, chem),
-                 demand(year, load_kw), pv_per_kw, chem)
+                 demand(year, load_kw), pv_per_kw * pv_derate(year), chem)
     assert r.renewable_share >= target - 1e-9
     assert r.renewable_share == pytest.approx(opt.renewable_share)
     # Sized for a faded battery and bigger load, so it costs more up front than year 1.

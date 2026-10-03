@@ -20,7 +20,7 @@ import numpy as np
 from sunsafe import config
 from sunsafe.energy.diesel import diesel_cost
 from sunsafe.energy.simulate import SimResult, battery_params, simulate
-from sunsafe.lifecycle.degradation import capacity_factor, demand
+from sunsafe.lifecycle.degradation import capacity_factor, demand, pv_derate
 
 
 @dataclass
@@ -98,14 +98,18 @@ def _best(options: list) -> Optional[SizingOption]:
 
 def size_system(load_kw: np.ndarray, pv_per_kw: np.ndarray, renewable_target: float,
                 chemistry: str, diesel_price: float, design_year: int = 1,
-                demand_growth: float = config.DEMAND_GROWTH_PER_YEAR) -> SizingOption:
+                demand_growth: float = config.DEMAND_GROWTH_PER_YEAR,
+                battery_year: Optional[int] = None) -> SizingOption:
     """
     Lowest annualised-cost PV + battery that meets the renewable target in the design year.
 
     design_year = 1 sizes for a new battery and today's load. design_year = N sizes so the
-    target is still met in year N with no battery replacement: battery performance uses
-    nominal x (1 - annual_fade)^(N-1) and load is grown by (1 + demand_growth)^(N-1)
-    (sunsafe/lifecycle/degradation.py). The objective uses diesel
+    target is still met in year N: load is grown by (1 + demand_growth)^(N-1), PV output is
+    derated by (1 - PV_ANNUAL_DERATE)^(N-1), and battery performance uses
+    nominal x (1 - annual_fade)^(battery_year-1) (sunsafe/lifecycle/degradation.py).
+    battery_year defaults to design_year (no replacement); pass a smaller value when the
+    battery has been replaced, e.g. replaced at the start of year 9 -> in year 15 it is
+    in its 7th year. The objective uses diesel
     in the design year and capex of the installed (nominal) battery.
 
     Search range (config.SIZING_*): PV 0.5x-15x average design-year load (kW); battery 0-3
@@ -120,13 +124,15 @@ def size_system(load_kw: np.ndarray, pv_per_kw: np.ndarray, renewable_target: fl
         diesel_price: delivered diesel price, USD/litre.
         design_year: year of operation to size for, >= 1.
         demand_growth: demand growth per year, 0-1 (only used when design_year > 1).
+        battery_year: year of the battery's life in the design year, 1 = new.
 
     Returns:
         SizingOption (battery_kwh is nominal as installed). If no option in the range meets the target, returns the option with
         the highest renewable share and meets_target=False (callers should warn).
     """
-    cap_factor = capacity_factor(chemistry, design_year)
+    cap_factor = capacity_factor(chemistry, battery_year or design_year)
     load_kw = demand(design_year, load_kw, demand_growth)
+    pv_per_kw = np.asarray(pv_per_kw, dtype=float) * pv_derate(design_year)
     avg_kw = load_kw.mean()
     daily_kwh = load_kw.sum() / (len(load_kw) / 24)
     pv_lo = config.SIZING_PV_MIN_X_AVG_LOAD * avg_kw
