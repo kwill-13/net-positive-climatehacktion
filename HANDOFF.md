@@ -30,26 +30,38 @@ results = run_sunsafe(inputs)                   # same Inputs -> Results contrac
   electricity's share of the community's energy use.
 - **`warnings`:** the recommended strategy plus every placeholder still in use. Show them.
 
-**Placeholders still in use.** The numbers are real model outputs, but these inputs are
-not yet sourced. All are in `sunsafe/config.py`, marked TODO.
-- **Load:** generic 24-hour profile shape. When `daily_load_kwh` is not given, demand is
-  estimated from diesel use at 3.0 kWh/litre.
-- **Capital costs:** PV $2,500/kWp; batteries $600/kWh lithium, $350/kWh lead-acid.
-- **O&M:** PV $25/kWp/yr; battery $10/kWh/yr.
-- **Ageing:**
-  - Battery fade 2.5%/yr lithium, 6%/yr lead-acid
-  - Battery life 12 yrs lithium, 6 yrs lead-acid
-  - PV derate 0.5%/yr
-  - Battery price decline 4%/yr
-- **Fuel shock:** the 2026 path is the site's diesel price x1.00 for Jan-Mar and x1.35
-  for Apr-Jun.
+**Assumptions.** All are in `sunsafe/config.py`, which starts with a sources block. Each
+value is commented with its source, or with TODO if it is still a placeholder.
+
+Still placeholders (TODO):
+- **Load:** generic 24-hour profile shape.
+- **Capital costs:** PV $2,500/kWp; lead-acid battery $350/kWh.
+- **Ageing:** battery fade 2.5%/yr lithium, 6%/yr lead-acid; demand growth 3%/yr.
 - **Headroom:**
   - Candidate loads: freezer 8, school cooking 12, outboard charging 15 kWh/day.
   - Non-electric energy: 3x electric load, with Fakaofo set at 1,800 kWh/day.
-- **Not counted:** generator capex/O&M and battery salvage value. Generator efficiency is
-  fixed at 3.0 kWh/litre.
+- **Not counted:** generator capex and battery salvage value.
 - **Weather:** if NASA POWER is unreachable, a synthetic tropical year is used and a
   warning says so.
+
+Now sourced:
+- **Diesel:**
+  - Tokelau price USD 2.70/L; Apia retail 2026 (USD 1.17-1.93) is a lower bound.
+  - Generator efficiency 3.0 kWh/L.
+  - Generator O&M USD 0.04/kWh, applied to both diesel-only and hybrid generator output.
+- **Fuel shock:** Apia monthly retail diesel, Mar-Oct 2026, as changes relative to March,
+  applied to the site's own price. It peaks at x1.78 in June. `fuel_shock` now has
+  **8 months** (2026-03 to 2026-10), not 6.
+- **Lithium:** battery $600/kWh; life 12 yrs.
+- **Lead-acid:** life 8 yrs.
+- **Ageing:** PV derate 0.5%/yr; battery price decline 4%/yr.
+- **O&M:** PV $70/kW/yr; battery $10/kWh/yr.
+- **Discount rate:** 8%, with 6% as a sensitivity case.
+
+**Diesel price drives the result.** At Tokelau's USD 2.70/L the hybrid beats diesel-only
+(about $0.82 vs $0.94 per kWh, payback ~8 yrs). Below about USD 2.3/L at 8%, or 2.1/L at
+6%, diesel-only is cheaper per kWh. Use a delivered price for the site, not a capital-city
+retail price.
 
 **To switch the app to the real model,** change one import in
 `app/components/layout.py`:

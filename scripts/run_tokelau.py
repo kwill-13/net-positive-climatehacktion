@@ -13,6 +13,8 @@ Sections:
      system's two lifecycle curves (with vs without its planned replacement).
   5. The real system's 15-year decline at battery fade 0.04 / 0.06 / 0.08, and the first
      year it drops below the target at each.
+  6. Diesel price x discount rate: hybrid vs diesel-only USD/kWh, payback, breakeven price.
+  7. Payback for all three atolls vs Tokelau's reported ~9-year simple payback.
 Fade, PV derate and growth come from sunsafe/lifecycle/degradation.py (placeholders in config.py).
 Reference figures (per atoll):
   Source A: 265-365 kWp PV, 1.1-1.6 MWh nominal lead-acid.
@@ -20,6 +22,7 @@ Reference figures (per atoll):
 """
 
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -38,7 +41,7 @@ LAT, LON = -9.38, -171.24          # Fakaofo
 CHEMISTRY = "lead_acid"
 TARGET = 0.95
 DAILY_LOADS_KWH = [600, 720]
-DIESEL_PRICE = 1.10                # USD/litre, placeholder; only affects the cost trade-off
+DIESEL_PRICE = config.TOKELAU_DIESEL_PRICE_USD_PER_L   # USD/litre, sourced (see config.py)
 
 REAL_PV_KW = (265, 365)
 SOURCE_A_BATT_KWH = (1100, 1600)
@@ -49,6 +52,17 @@ SENS_TARGETS = [0.95, 0.99, 1.0]
 SENS_DESIGN_YEARS = [1, 8, 15]
 FORWARD_YEARS = 15
 FADE_RATES = [0.04, 0.06, 0.08]
+
+PRICES_USD_PER_L = [1.10, 1.50, 2.00, 2.50, 2.70, 3.00, 3.50]
+DISCOUNT_RATES = [config.DISCOUNT_RATE, config.DISCOUNT_RATE_LOW]
+
+# The three atolls, ~200 L/day diesel each [SPC16] x 3 kWh/L = ~600 kWh/day each.
+ATOLLS = [("Fakaofo", LAT, LON), ("Nukunonu", -9.17, -171.83), ("Atafu", -8.54, -172.50)]
+ATOLL_DAILY_KWH = 600
+# Tokelau 2012 project: NZD ~7M for all three atolls, reported ~9-year simple payback
+# (CleanTechnica 2013; URL not yet supplied). Converted at config.NZD_TO_USD_2012.
+TOKELAU_2012_CAPEX_NZD = 7.0e6
+TOKELAU_REPORTED_PAYBACK_YEARS = 9
 
 
 def _vs(value, lo, hi=None):
@@ -121,18 +135,31 @@ def _header(title):
     print("=" * 100)
 
 
+@lru_cache(maxsize=None)
+def _detailed(site, lat, lon, daily):
+    """run_sunsafe_detailed for a Tokelau site at the default price (cached: ~12 s each)."""
+    inputs = Inputs(site_name=site, latitude=lat, longitude=lon,
+                    diesel_litres_per_day=daily / config.DIESEL_KWH_PER_LITRE,
+                    diesel_price_per_litre=DIESEL_PRICE, daily_load_kwh=daily,
+                    renewable_target=TARGET, battery_chemistry=CHEMISTRY,
+                    project_years=FORWARD_YEARS)
+    return run_sunsafe_detailed(inputs)
+
+
+def _econ(design, price, rate=config.DISCOUNT_RATE):
+    """Economics of a Strategy (fixed design) at a diesel price and discount rate."""
+    return fin.economics(design.capex_usd, design.annual_om_usd,
+                         [y.load_kwh for y in design.years], [y.gen_kwh for y in design.years],
+                         price, design.replacement_year, design.replacement_usd, rate)
+
+
 def strategy_comparison(pv_per_kw):
     """Section 4: A vs B over the project, and the recommended system's lifecycle curves."""
     _header(f"4. STRATEGY: build big vs moderate + planned replacement ({CHEMISTRY}, target "
             f"{TARGET:.0%} EVERY year, {FORWARD_YEARS} yrs, NPV at "
             f"{config.PROJECT_DISCOUNT_RATE:.0%})")
     for daily in DAILY_LOADS_KWH:
-        inputs = Inputs(site_name="Fakaofo", latitude=LAT, longitude=LON,
-                        diesel_litres_per_day=daily / config.DIESEL_KWH_PER_LITRE,
-                        diesel_price_per_litre=DIESEL_PRICE, daily_load_kwh=daily,
-                        renewable_target=TARGET, battery_chemistry=CHEMISTRY,
-                        project_years=FORWARD_YEARS)
-        res, comp = run_sunsafe_detailed(inputs)
+        res, comp = _detailed("Fakaofo", LAT, LON, daily)
         rec = comp.recommended
         print(f"\nDaily load {daily} kWh/day (year 1)")
         print(f"  {'strategy':<24} {'PV kWp':>7} {'batt kWh':>8} {'replace':>7} "
@@ -181,6 +208,70 @@ def fade_sensitivity(pv_per_kw):
     print()
 
 
+def price_sensitivity():
+    """Section 6: fixed recommended design, priced at several diesel prices and rates."""
+    _header(f"6. DIESEL PRICE x DISCOUNT RATE (design fixed at the recommendation for "
+            f"USD {DIESEL_PRICE:.2f}/L; generator O&M USD {config.GEN_OM_USD_PER_KWH}/kWh)")
+    for daily in DAILY_LOADS_KWH:
+        _, comp = _detailed("Fakaofo", LAT, LON, daily)
+        rec = comp.recommended
+        print(f"\nDaily load {daily} kWh/day: {rec.name}, {rec.pv_kw:.0f} kWp / "
+              f"{rec.battery_kwh:.0f} kWh, capex ${rec.capex_usd:,.0f}")
+        heads = [f"{k} @{r:.0%}" for r in DISCOUNT_RATES for k in ("hybrid", "diesel")]
+        print(f"  {'USD/L':>6} | " + " ".join(f"{h:>11}" for h in heads)
+              + f" | {'payback yrs':>11}")
+        for p in PRICES_USD_PER_L:
+            es = [_econ(rec, p, r) for r in DISCOUNT_RATES]
+            vals = [v for e in es for v in (e.cost_per_kwh_hybrid_usd, e.cost_per_kwh_diesel_usd)]
+            pb = es[0].payback_years
+            print(f"  {p:>6.2f} | " + " ".join(f"{v:>11.3f}" for v in vals)
+                  + f" | {('never' if pb == float('inf') else f'{pb:.1f}'):>11}")
+        for r in DISCOUNT_RATES:
+            # Both levelised costs are linear in diesel price, so solve the crossing exactly.
+            lo, hi = _econ(rec, 1.0, r), _econ(rec, 2.0, r)
+            gap_lo = lo.cost_per_kwh_hybrid_usd - lo.cost_per_kwh_diesel_usd
+            gap_hi = hi.cost_per_kwh_hybrid_usd - hi.cost_per_kwh_diesel_usd
+            slope = gap_hi - gap_lo
+            be = 1.0 - gap_lo / slope if slope < 0 else float("inf")
+            print(f"  Breakeven diesel price at {r:.0%}: USD {be:.2f}/L "
+                  f"(hybrid cheaper per kWh above this)")
+    print()
+
+
+def atoll_payback():
+    """Section 7: model payback for all three atolls vs the reported ~9 years."""
+    real_capex_usd = TOKELAU_2012_CAPEX_NZD * config.NZD_TO_USD_2012
+    _header(f"7. THREE ATOLLS: simple payback at USD {DIESEL_PRICE:.2f}/L, {ATOLL_DAILY_KWH} "
+            f"kWh/day each, vs reported ~{TOKELAU_REPORTED_PAYBACK_YEARS} yrs "
+            f"(NZD {TOKELAU_2012_CAPEX_NZD / 1e6:.0f}M = USD {real_capex_usd / 1e6:.1f}M)")
+    pv_r, batt_r = REAL_SYSTEM
+    print(f"{'atoll':<10} | {'recommended design':>20} {'capex $':>11} {'payback':>8} | "
+          f"{'real 300/1350, saving $/yr':>26} {'payback @ real capex':>21}")
+    totals = {"rec_capex": 0.0, "rec_net": 0.0, "real_net": 0.0}
+    for name, lat, lon in ATOLLS:
+        _, comp = _detailed(name, lat, lon, ATOLL_DAILY_KWH)
+        rec = comp.recommended
+        e_rec = _econ(rec, DIESEL_PRICE)
+        pv_per_kw = pv_output_per_kw(fetch_weather(lat, lon))
+        real_years = run_years(pv_r, batt_r, village_profile(ATOLL_DAILY_KWH), pv_per_kw,
+                               CHEMISTRY, FORWARD_YEARS)
+        om_real = fin.annual_om_usd(pv_r, batt_r)
+        e_real = fin.economics(real_capex_usd / 3, om_real, [y.load_kwh for y in real_years],
+                               [y.gen_kwh for y in real_years], DIESEL_PRICE)
+        totals["rec_capex"] += rec.capex_usd
+        totals["rec_net"] += e_rec.annual_saving_year1_usd - rec.annual_om_usd
+        totals["real_net"] += e_real.annual_saving_year1_usd - om_real
+        print(f"{name:<10} | {f'{rec.pv_kw:.0f} kWp / {rec.battery_kwh:.0f} kWh':>20} "
+              f"{rec.capex_usd:>11,.0f} {e_rec.payback_years:>7.1f}y | "
+              f"{e_real.annual_saving_year1_usd:>26,.0f} {e_real.payback_years:>20.1f}y")
+    print(f"{'ALL THREE':<10} | {'':>20} {totals['rec_capex']:>11,.0f} "
+          f"{totals['rec_capex'] / totals['rec_net']:>7.1f}y | {'':>26} "
+          f"{real_capex_usd / totals['real_net']:>20.1f}y")
+    print(f"Reported: ~{TOKELAU_REPORTED_PAYBACK_YEARS} years. 'Payback @ real capex' uses the actual "
+          f"project cost and the model's year-1 fuel + generator O&M saving minus solar O&M.")
+    print()
+
+
 def main():
     weather = fetch_weather(LAT, LON)
     pv_per_kw = pv_output_per_kw(weather)
@@ -212,6 +303,8 @@ def main():
     forward_run(pv_per_kw)
     strategy_comparison(pv_per_kw)
     fade_sensitivity(pv_per_kw)
+    price_sensitivity()
+    atoll_payback()
 
 
 if __name__ == "__main__":
