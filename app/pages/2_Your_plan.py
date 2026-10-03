@@ -19,11 +19,12 @@ if not in_pacific(i.latitude, i.longitude):
 st.markdown(f"**{i.site_name}** · {i.diesel_litres_per_day:,.0f} L/day diesel at ${i.diesel_price_per_litre:.2f}/L · "
             f"target {pct(target)} every year · {n} years · demand growth {plan['growth_label']} · "
             f"{i.battery_chemistry.replace('_', '-')} battery")
+# Plain text wraps in a narrow window; a page_link label does not, so the sentence sits above a short link.
 if not tokelau:
-    st.page_link(PAGE_CHECKS, label="Planning estimate. Engine checked against Tokelau's measured performance",
-                 icon="ℹ️")
+    st.markdown("ℹ️ Planning estimate. Engine checked against Tokelau's measured performance.")
 else:
-    st.page_link(PAGE_CHECKS, label="Tokelau validation site: compare with the real 2012 system", icon="ℹ️")
+    st.markdown("ℹ️ Tokelau validation site: compare this plan with the real 2012 system.")
+st.page_link(PAGE_CHECKS, label="How we know it works", icon="➡️")
 if not plan["any_feasible"]:
     st.error(f"No plan kept {pct(target)} renewable in every year; showing the closest one. "
              "Try a lower target or a shorter project.")
@@ -50,6 +51,7 @@ st.caption(f"Recommended: {plan['rec_name']}. The lowest {n}-year cost plan that
 
 def show(builder, where=st):
     chart, caption = builder(plan)
+    chart = charts.fit_width(chart)
     with where.container():
         stretch(st.altair_chart, chart)
         st.caption(caption)
@@ -59,19 +61,13 @@ def show(builder, where=st):
 show(charts.investment_timeline)
 show(charts.renewable_share)
 show(charts.night_coverage)
-a, b = st.columns([3, 2], gap="large")
-with a:
-    show(charts.fund_balance)
-with b:
-    show(charts.cost_bars)
+show(charts.fund_balance)      # full width: side-by-side columns squeeze charts in a narrow window
+show(charts.cost_bars)
 
 # ------------------------------------------------------------------ risks ---
-a, b = st.columns([3, 1], gap="large")
-with a:
-    show(charts.fuel_shock)
-with b:
-    card("Backup with no fuel", f"{r.backup_hours:,.0f} h",
-         sub=f"Critical load ({i.critical_load_kw:g} kW: clinic, radio) on a full battery.")
+show(charts.fuel_shock)
+card("Backup with no fuel", f"{r.backup_hours:,.0f} hours",
+     sub=f"Critical load ({i.critical_load_kw:g} kW: clinic, radio) on a full battery.")
 
 with st.expander("Alternatives we considered"):
     show(charts.strategy_npv)
@@ -81,13 +77,13 @@ with st.expander("Alternatives we considered"):
 st.subheader("Share the plan")
 a, b = st.columns(2)
 proposal, onepager = build_proposal(r, plan), build_onepager(r, plan)
-stretch(a.download_button, "Download funding proposal (.html, with charts)", proposal,
-        "sunsafe_funding_proposal.html", mime="text/html")
-stretch(b.download_button, "Download community one-pager (.md)", onepager, "sunsafe_community_onepager.md")
-st.caption("The proposal opens in any browser (charts load from the Vega CDN, so it needs internet); "
-           "use the browser's Print > Save as PDF to make a PDF.")
-with st.expander("Preview the funding proposal"):
+stretch(a.download_button, "Funding proposal", proposal, "sunsafe_funding_proposal.html", mime="text/html")
+stretch(b.download_button, "Community one-pager", onepager, "sunsafe_community_onepager.md")
+st.caption("Funding proposal: an HTML file with the charts above; it opens in any browser (charts load from "
+           "the Vega CDN, so it needs internet), and Print > Save as PDF makes a PDF. Community one-pager: a "
+           "plain-text (Markdown) summary.")
+with st.expander("Preview proposal"):
     components.html(proposal, height=900, scrolling=True)
-with st.expander(f"Model notes and assumptions ({len(r.warnings)})"):
+with st.expander(f"Model notes ({len(r.warnings)})"):
     for w in r.warnings:
         st.markdown(f"- {w}")

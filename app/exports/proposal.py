@@ -37,7 +37,7 @@ def _breakeven(x, curve, plan):
 
 def _chart(builder, plan, k):
     chart, caption = builder(plan)
-    spec = chart.properties(width=680).to_json(indent=None).replace("</", "<\\/")
+    spec = charts.fit_width(chart).properties(width=560).to_json(indent=None).replace("</", "<\\/")   # + labels fits 780 px
     return (f'<figure><div id="chart{k}"></div><figcaption>{html.escape(caption)}</figcaption></figure>'
             f'<script>vegaEmbed("#chart{k}", {spec}, {{actions: false, renderer: "svg"}});</script>')
 

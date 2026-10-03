@@ -16,9 +16,9 @@ def _on_preset():
         apply_preset(PRESETS[s.preset])
 
 
-st.selectbox("Start from a Pacific island preset (Tokelau atolls use the validation inputs; "
-             "the others have illustrative diesel use)", ["—"] + list(PRESETS), key="preset",
-             on_change=_on_preset)
+st.selectbox("Pacific island preset", ["—"] + list(PRESETS), key="preset", on_change=_on_preset)
+st.caption("Validation = a Tokelau atoll with the inputs used to check the model against the real system. "
+           "Illustrative = real coordinates with made-up diesel use (200-600 L/day); replace with your island's data.")
 
 # ------------------------------------------------------------------- map ---
 # Click targets: a faint 1-degree grid over the Pacific, plus the presets. Longitudes are drawn

@@ -78,7 +78,8 @@ def _refresh_model_if_changed():
 # ------------------------------------------------------------------ presets ---
 
 def _preset_label(p):
-    return f"{p['name']} ({'illustrative inputs' if p['illustrative'] else p['note']})"
+    """Short dropdown label; the detail (validation site vs illustrative inputs) is in the caption."""
+    return f"{p['name']} · {'illustrative' if p['illustrative'] else 'validation'}"
 
 
 PRESETS = {_preset_label(p): p for p in config.SITE_PRESETS}
@@ -158,7 +159,8 @@ div[data-baseweb="input"],div[data-baseweb="input"] input,div[data-baseweb="sele
 .card.out{border-left:5px solid #1f6f66}.card.inp{border-left:5px solid #7b6fb0}
 .card small,.tag{color:#777;letter-spacing:.08em;text-transform:uppercase;font-size:.72rem;font-weight:600}
 .tag.inp{color:#7b6fb0}.tag.out{color:#1f6f66}
-.card h2{margin:2px 0 0;color:#1f6f66;font-size:1.8rem}
+.card{white-space:normal;overflow-wrap:break-word;word-break:normal}
+.card h2{margin:2px 0 0;color:#1f6f66;font-size:clamp(1.15rem,2.3vw,1.8rem);line-height:1.2}
 .card .sub{color:#555;font-size:.9rem;margin-top:4px}
 .card ul{margin:6px 0 0;padding-left:18px;color:#2b2b2b}
 .notice{background:#fff4d6;border:1px solid #e6c766;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:.88rem;color:#5a4a10}

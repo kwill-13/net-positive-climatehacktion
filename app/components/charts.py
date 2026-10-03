@@ -21,11 +21,19 @@ MUTED = "#666666"
 # ------------------------------------------------------------------ helpers ---
 
 def _title(text, sub=None):
-    lines = textwrap.wrap(text, 78)
-    kw = dict(text=lines, anchor="start", fontSize=15, fontWeight="bold", color=INK, offset=10)
+    # Wrapped by hand (Vega titles don't wrap) for a ~440 px chart: an 800 px window with the sidebar open.
+    # limit=0 stops Vega shortening a line with "...".
+    lines = textwrap.wrap(text, 46)
+    kw = dict(text=lines, anchor="start", fontSize=15, fontWeight="bold", color=INK, offset=10, limit=0)
     if sub:
-        kw.update(subtitle=textwrap.wrap(sub, 95), subtitleColor=MUTED, subtitleFontSize=12)
+        kw.update(subtitle=textwrap.wrap(sub, 64), subtitleColor=MUTED, subtitleFontSize=12)
     return alt.TitleParams(**kw)
+
+
+def fit_width(chart):
+    """Width fits the container; height stays the plot's own height, so long titles add space instead of
+    squeezing the plot (Streamlit's default autosize counts titles and labels inside `height`)."""
+    return chart.properties(autosize=alt.AutoSizeParams(type="fit-x", contains="padding"))
 
 
 def _usd(x):
@@ -38,8 +46,8 @@ def _years_x(n, title="Year of operation"):
 
 
 def _end_labels(df, x, y, series, colors, gap=0.07):
-    """Line names just right of each line's last point (outside the plot; see LABEL_PAD), spread
-    vertically so they never overlap each other."""
+    """Line names just right of each line's last point (Vega's autosize makes room), spread
+    vertically so they never overlap each other. Keep names short; details go in the caption."""
     last = df.sort_values(x).groupby(series, as_index=False).last()
     last = last[last[series].isin(list(colors))].sort_values(y)
     span = float(df[y].max() - df[y].min()) or 1.0
@@ -51,9 +59,6 @@ def _end_labels(df, x, y, series, colors, gap=0.07):
     return [alt.Chart(last[last[series] == name]).mark_text(align="left", dx=8, baseline="middle", fontWeight="bold",
                                                             color=color).encode(x=f"{x}:Q", y="_ly:Q", text=f"{series}:N")
             for name, color in colors.items() if (last[series] == name).any()]
-
-
-LABEL_PAD = {"left": 5, "top": 5, "bottom": 5, "right": 175}   # room for the end labels
 
 
 def _lines(df, x, y, series, colors, dashes=None, n=None, y_title=None, y_scale=None, x_enc=None):
@@ -99,13 +104,14 @@ def investment_timeline(plan):
     rows = []
     for k, s in enumerate(r.plan_stages):
         if k == 0:
-            what = f"Build: {s.pv_added_kw:,.0f} kWp solar + {s.battery_installed_kwh:,.0f} kWh {chem}"
+            what = f"Build\n{s.pv_added_kw:,.0f} kWp + {s.battery_installed_kwh:,.0f} kWh"
         elif s.pv_added_kw > 0.5:
-            what = f"Year {s.year}: +{s.pv_added_kw:,.0f} kWp + new {s.battery_installed_kwh:,.0f} kWh"
+            what = f"Year {s.year}\n+{s.pv_added_kw:,.0f} kWp, new {s.battery_installed_kwh:,.0f} kWh"
         else:
-            what = f"Year {s.year}: replace battery, {s.battery_installed_kwh:,.0f} kWh"
+            what = f"Year {s.year}\nnew {s.battery_installed_kwh:,.0f} kWh battery"
         rows.append(dict(Year=s.year, y=0, what=what, cost=_usd(s.capex_usd), usd=s.capex_usd,
-                         dy=-40 if k % 2 == 0 else 26, align="left" if s.year < 0.65 * n else "right"))
+                         ly=0.6 if k % 2 == 0 else -0.6, base="bottom" if k % 2 == 0 else "top",
+                         align="left" if s.year < 0.65 * n else "right"))
     df = pd.DataFrame(rows)
     later = r.plan_stages[1:]
     total_later = sum(s.capex_usd for s in later)
@@ -114,19 +120,20 @@ def investment_timeline(plan):
                 f"{len(later)} upgrades (years {', '.join(str(s.year) for s in later)}) totalling {_usd(total_later)}"
                 if later else "no upgrades needed"))
     axis = alt.Chart(pd.DataFrame({"Year": [1, n], "y": [0, 0]})).mark_line(color="#cfcac0", strokeWidth=3).encode(
-        x=_years_x(n), y=alt.Y("y:Q", axis=None, scale=alt.Scale(domain=[-1, 1])))
+        x=_years_x(n), y=alt.Y("y:Q", axis=None, scale=alt.Scale(domain=[-1.9, 1.9])))
     dots = alt.Chart(df).mark_point(filled=True, color=PLAN, opacity=1).encode(
-        x="Year:Q", y="y:Q", size=alt.Size("usd:Q", scale=alt.Scale(range=[150, 900]), legend=None),
+        x="Year:Q", y="y:Q", size=alt.Size("usd:Q", scale=alt.Scale(range=[120, 600]), legend=None),
         tooltip=["what:N", "cost:N"])
     labels = []
     for row in rows:
         one = pd.DataFrame([row])
-        labels.append(alt.Chart(one).mark_text(align=row["align"], baseline="top", dy=row["dy"], fontSize=12,
+        labels.append(alt.Chart(one).mark_text(align=row["align"], baseline=row["base"], fontSize=12,
                                                color=INK, lineBreak="\n").encode(
-            x="Year:Q", y="y:Q", text=alt.value(f"{row['what']}\n{row['cost']}")))
-    chart = alt.layer(axis, dots, *labels).properties(height=180, title=_title(title))
-    caption = ("Decision: what to fund now and what to budget later. Marker size shows the cost; "
-               "upgrade costs are at that year's prices (batteries assumed to get 4%/yr cheaper).")
+            x="Year:Q", y="ly:Q", text=alt.value(f"{row['what']}\n{row['cost']}")))
+    chart = alt.layer(axis, dots, *labels).properties(height=250, title=_title(title))
+    caption = (f"Decision: what to fund now and what to budget later. Each marker is an investment: kWp of solar "
+               f"added and kWh of new {chem} battery, with its cost (marker size). Upgrade costs are at that "
+               "year's prices (batteries assumed to get 4%/yr cheaper).")
     return chart, caption
 
 
@@ -136,11 +143,11 @@ def renewable_share(plan):
     n, target = r.inputs.project_years, r.inputs.renewable_target
     yrs = pd.DataFrame(plan["years"])
     ups = plan["upgrade_years"]
-    names = {"With the plan": PLAN, "Without reinvestment": WITHOUT} if ups else {"The plan": PLAN}
+    names = {"With upgrades": PLAN, "Never upgraded": WITHOUT} if ups else {"The plan": PLAN}
     parts = [pd.DataFrame({"Year": yrs.year, "Share": yrs.share_plan * 100, "Line": list(names)[0]})]
     if ups:   # grey first, so the plan line is drawn on top where they coincide
         parts.insert(0, pd.DataFrame({"Year": yrs.year, "Share": yrs.share_without * 100,
-                                      "Line": "Without reinvestment"}))
+                                      "Line": "Never upgraded"}))
     df = pd.concat(parts)
     low = min(df.Share.min(), target * 100)
     lines = _lines(df, "Year", "Share", "Line", names, n=n, y_title="Renewable share (%)",
@@ -156,9 +163,10 @@ def renewable_share(plan):
         title = f"The first build keeps solar share at or above {plan_min:.0%} through year {n}"
     chart = alt.layer(lines, tline, tlabel, *_upgrade_rules(plan),
                       *_end_labels(df, "Year", "Share", "Line", names)
-                      ).properties(padding=LABEL_PAD, height=320, title=_title(title))
-    caption = (f"Decision: fund the upgrades on schedule. Target {target:.0%} renewable in every year; "
-               "year 1 can sit above it because the build is sized to last until the first upgrade.")
+                      ).properties(height=320, title=_title(title))
+    caption = (f"Decision: fund the upgrades on schedule. Green = the plan with its upgrades; grey = the first "
+               f"build only, never upgraded. Target {target:.0%} renewable in every year; year 1 can sit above it "
+               "because the build is sized to last until the first upgrade.")
     return chart, caption
 
 
@@ -168,16 +176,16 @@ def night_coverage(plan):
     n = r.inputs.project_years
     yrs = pd.DataFrame(plan["years"])
     ups = plan["upgrade_years"]
-    names = {"Night cover, plan": PLAN}
+    names = {("With upgrades" if ups else "The plan"): PLAN}
     if ups:
-        names["Night cover, never replaced"] = WITHOUT
-    names["Solar output / demand"] = PLAN_LIGHT
+        names["Never upgraded"] = WITHOUT
+    names["Solar / demand"] = PLAN_LIGHT
     df = pd.concat([   # grey first, so the plan line is drawn on top where they coincide
-        pd.DataFrame({"Year": yrs.year, "Pct": yrs.night_without, "Line": "Night cover, never replaced"}) if ups else None,
-        pd.DataFrame({"Year": yrs.year, "Pct": yrs.solar_plan, "Line": "Solar output / demand"}),
-        pd.DataFrame({"Year": yrs.year, "Pct": yrs.night_plan, "Line": "Night cover, plan"}),
+        pd.DataFrame({"Year": yrs.year, "Pct": yrs.night_without, "Line": "Never upgraded"}) if ups else None,
+        pd.DataFrame({"Year": yrs.year, "Pct": yrs.solar_plan, "Line": "Solar / demand"}),
+        pd.DataFrame({"Year": yrs.year, "Pct": yrs.night_plan, "Line": "With upgrades" if ups else "The plan"}),
     ])
-    lines = _lines(df, "Year", "Pct", "Line", names, dashes={"Solar output / demand": [6, 4]}, n=n,
+    lines = _lines(df, "Year", "Pct", "Line", names, dashes={"Solar / demand": [6, 4]}, n=n,
                    y_title="% of demand", y_scale=alt.Scale(domain=[0, max(110, float(df.Pct.max()) * 1.08)], nice=False))
     ref = alt.Chart(pd.DataFrame({"y": [100]})).mark_rule(color=MUTED, strokeDash=[2, 2]).encode(y="y:Q")
     reflabel = alt.Chart(pd.DataFrame({"y": [100], "Year": [1], "t": ["100%"]})).mark_text(
@@ -200,9 +208,10 @@ def night_coverage(plan):
            f"fading / that night's demand. Solar output = yearly PV generation / yearly demand.{why}")
     chart = alt.layer(lines, ref, reflabel, *_upgrade_rules(plan),
                       *_end_labels(df, "Year", "Pct", "Line", names)
-                      ).properties(padding=LABEL_PAD, height=320, title=_title(title, sub))
-    caption = ("Decision: when to schedule each upgrade. Daytime solar stays ahead of demand; what runs out is "
-               "battery storage for the night, as the battery fades and demand grows.")
+                      ).properties(height=320, title=_title(title, sub))
+    caption = ("Decision: when to schedule each upgrade. Solid lines: usable battery as % of overnight demand, with "
+               "upgrades (green) and never upgraded (grey). Dashed: yearly solar output as % of yearly demand. "
+               "Daytime solar stays ahead of demand; what runs out is battery storage for the night.")
     return chart, caption
 
 
@@ -211,7 +220,7 @@ def fund_balance(plan):
     r = plan["results"]
     n = r.inputs.project_years
     fund = pd.DataFrame(plan["fund"]).rename(columns={"year": "Year", "balance": "Balance"})
-    fund["Line"] = "Fund balance"
+    fund["Line"] = "Fund"
     ups = plan["fund_upgrades"]
     dep, om = plan["fund_deposit"], plan["om_year1"]
     if not ups:
@@ -224,17 +233,17 @@ def fund_balance(plan):
                  if len(short) < len(ups) else f"Saving {_usd(dep)}/yr does not cover the upgrades")
         if short:
             title += "; " + "; ".join(f"year {u['year']} is {_usd(u['shortfall'])} short" for u in short)
-    line = _lines(fund, "Year", "Balance", "Line", {"Fund balance": PLAN}, n=n, y_title="Saved, end of year (USD)",
+    line = _lines(fund, "Year", "Balance", "Line", {"Fund": PLAN}, n=n, y_title="Saved (USD)",
                   y_scale=alt.Scale(zero=True))
-    line = line.encode(y=alt.Y("Balance:Q", title="Saved, end of year (USD)", scale=alt.Scale(zero=True),
+    line = line.encode(y=alt.Y("Balance:Q", title="Saved (USD)", scale=alt.Scale(zero=True),
                                axis=alt.Axis(format="$.2~s")))
-    layers = [line, *_end_labels(fund, "Year", "Balance", "Line", {"Fund balance": PLAN})]
+    layers = [line, *_end_labels(fund, "Year", "Balance", "Line", {"Fund": PLAN})]
     for u in ups:
         c = pd.DataFrame({"y": [u["cost"]], "Year": [1], "t": [f"Year-{u['year']} upgrade {_usd(u['cost'])}"]})
         layers.append(alt.Chart(c).mark_rule(color=PLAN, strokeDash=[6, 4], opacity=0.6).encode(y="y:Q"))
         layers.append(alt.Chart(c).mark_text(align="left", dx=3, dy=-7, color=PLAN).encode(x="Year:Q", y="y:Q", text="t:N"))
     chart = alt.layer(*layers, *_upgrade_rules(plan, label=False)).properties(
-        padding=LABEL_PAD, height=300, title=_title(title, f"Set aside {_usd(om + dep)}/yr: {_usd(om)} O&M spent each year + "
+        height=300, title=_title(title, f"Set aside {_usd(om + dep)}/yr: {_usd(om)} O&M spent each year + "
                                         f"{_usd(dep)} saved at {plan['discount_rate']:.0%} interest."))
     caption = ("Decision: how much to set aside each year. The saving is sized for the first upgrade and assumed "
                "to continue afterwards; any shortfall for later upgrades needs another funding round.")
@@ -245,21 +254,22 @@ def cost_bars(plan):
     """4b. Cost per kWh at the current diesel price: diesel only, full hybrid, island-paid."""
     r = plan["results"]
     ap, price = plan["at_price"], r.inputs.diesel_price_per_litre
-    df = pd.DataFrame({"Cost": ["Diesel only", "Full hybrid cost", "Island-paid (donors fund the first build)"],
+    df = pd.DataFrame({"Cost": ["Diesel only", "Full hybrid", "Island-paid"],
                        "USD/kWh": [ap["diesel"], ap["full"], ap["island"]]})
     colors = [DIESEL, PLAN, PLAN_LIGHT]
     bars = alt.Chart(df).mark_bar().encode(
-        y=alt.Y("Cost:N", sort=list(df.Cost), title=None, axis=alt.Axis(labelLimit=260)),
-        x=alt.X("USD/kWh:Q", title="USD per kWh (lifetime average)"),
+        y=alt.Y("Cost:N", sort=list(df.Cost), title=None, axis=alt.Axis(labelLimit=0)),
+        x=alt.X("USD/kWh:Q", title="USD per kWh"),
         color=alt.Color("Cost:N", scale=alt.Scale(domain=list(df.Cost), range=colors), legend=None),
         tooltip=["Cost", alt.Tooltip("USD/kWh:Q", format="$.3f")])
     text = bars.mark_text(align="left", dx=4, color=INK).encode(text=alt.Text("USD/kWh:Q", format="$.2f"))
     cheaper = ap["island"] < ap["diesel"]
     title = (f"At ${price:.2f}/L the island pays ${ap['island']:.2f}/kWh if donors fund the first build, "
              f"{'vs' if cheaper else 'more than'} ${ap['diesel']:.2f}/kWh on diesel")
-    chart = (bars + text).properties(height=170, title=_title(title, f"Full hybrid cost ${ap['full']:.2f}/kWh "
-                                                                     "includes the first build."))
-    caption = "Decision: who pays for the first build. Island-paid = O&M + later upgrades + generator fuel and O&M."
+    chart = (bars + text).properties(height=150, title=_title(title))
+    caption = ("Decision: who pays for the first build. Full hybrid = every cost including the first build. "
+               "Island-paid = what the island pays if donors fund the first build: O&M, later upgrades, and "
+               "generator fuel and O&M. Lifetime average cost per kWh.")
     return chart, caption
 
 
@@ -271,8 +281,8 @@ def strategy_npv(plan):
     strat["NPV ($M)"] = strat.npv / 1e6
     strat["Pick"] = strat.recommended.map({True: "Recommended", False: "Other"})
     bars = alt.Chart(strat).mark_bar().encode(
-        y=alt.Y("Strategy:N", sort=list(strat.Strategy), title=None),
-        x=alt.X("NPV ($M):Q", title=f"{n}-year cost, present value (USD M, 8%)"),
+        y=alt.Y("Strategy:N", sort=list(strat.Strategy), title=None, axis=alt.Axis(labelLimit=0)),
+        x=alt.X("NPV ($M):Q", title=f"{n}-yr cost, USD M"),
         color=alt.Color("Pick:N", scale=alt.Scale(domain=["Recommended", "Other"], range=[PLAN, "#cfcac0"]), legend=None),
         tooltip=["Strategy", "name", alt.Tooltip("NPV ($M):Q", format=".2f")])
     labels = bars.mark_text(align="left", dx=4, color=INK).encode(text=alt.Text("NPV ($M):Q", format="$.2f"))
@@ -284,25 +294,25 @@ def strategy_npv(plan):
         title = f"{rec['label']} is the cheapest plan over {n} years ({_usd(rec['npv'])})"
     chart = (bars + labels).properties(height=190, title=_title(title))
     caption = ("Decision: which strategy to fund. Each bar is the cheapest version of that strategy that meets "
-               "the target every year (build, O&M, upgrades, generator fuel and O&M).")
+               "the target every year: present value at 8% of build, O&M, upgrades, and generator fuel and O&M.")
     return chart, caption
 
 
 def price_breakeven(plan):
     """Alternatives: cost per kWh across diesel prices, with both breakevens."""
     r = plan["results"]
-    names = {"Diesel only": DIESEL, "Full hybrid cost": PLAN, "Island-paid": PLAN_LIGHT}
+    names = {"Diesel only": DIESEL, "Full hybrid": PLAN, "Island-paid": PLAN_LIGHT}
     df = pd.DataFrame({"Price": plan["prices"], "Diesel only": plan["cost_diesel"],
-                       "Full hybrid cost": plan["cost_full"], "Island-paid": plan["cost_island"]})
+                       "Full hybrid": plan["cost_full"], "Island-paid": plan["cost_island"]})
     df = df.melt("Price", var_name="Line", value_name="USD/kWh")
-    x = alt.X("Price:Q", title="Delivered diesel price (USD/L)", scale=alt.Scale(domain=[1, 3.5], nice=False))
+    x = alt.X("Price:Q", title="Diesel price (USD/L)", scale=alt.Scale(domain=[1, 3.5], nice=False))
     lines = alt.Chart(df).mark_line(strokeWidth=2.5).encode(
         x=x, y=alt.Y("USD/kWh:Q", title="USD per kWh"),
         color=alt.Color("Line:N", scale=alt.Scale(domain=list(names), range=list(names.values())), legend=None),
         tooltip=["Line", alt.Tooltip("Price:Q", format="$.2f"), alt.Tooltip("USD/kWh:Q", format="$.3f")])
-    marks = [dict(x=r.inputs.diesel_price_per_litre, t=f"Your price ${r.inputs.diesel_price_per_litre:.2f}", c=MUTED,
+    marks = [dict(x=r.inputs.diesel_price_per_litre, t=f"You ${r.inputs.diesel_price_per_litre:.2f}", c=MUTED,
                   align="right", dx=-3)]
-    for key, label, c in (("breakeven_full", "Full-cost breakeven", PLAN), ("breakeven_island", "Island breakeven", PLAN_LIGHT)):
+    for key, label, c in (("breakeven_full", "Breakeven", PLAN), ("breakeven_island", "Island", PLAN_LIGHT)):
         if plan[key] is not None:
             marks.append(dict(x=plan[key], t=f"{label} ${plan[key]:.2f}", c=c, align="left", dx=3))
     rules = alt.Chart(pd.DataFrame([dict(x=m["x"], c=m["c"]) for m in marks])).mark_rule(strokeDash=[2, 3]).encode(
@@ -320,8 +330,10 @@ def price_breakeven(plan):
               "; for the island, at no price shown")
     chart = alt.layer(lines, rules, *texts,
                       *_end_labels(df, "Price", "USD/kWh", "Line", names)
-                      ).properties(padding=LABEL_PAD, height=300, title=_title(title))
-    caption = "Decision: how exposed the case is to diesel prices. The plan is fixed; only the price changes."
+                      ).properties(height=300, title=_title(title))
+    caption = ("Decision: how exposed the case is to diesel prices. Lines: diesel only (amber), full hybrid cost "
+               "(green), island-paid if donors fund the first build (light green). Markers: your price and the "
+               "breakevens. The plan is fixed; only the price changes.")
     return chart, caption
 
 
@@ -330,19 +342,22 @@ def fuel_shock(plan):
     r = plan["results"]
     fs = pd.DataFrame([vars(m) for m in r.fuel_shock])
     fs["Month"] = range(1, len(fs) + 1)
-    names = {"Diesel only": DIESEL, "With the plan": PLAN}
+    month_names = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split()
+    fs["short"] = [month_names[int(m.split("-")[1]) - 1] for m in fs.month]
+    names = {"Diesel only": DIESEL, "With solar": PLAN}
     df = pd.concat([pd.DataFrame({"Month": fs.Month, "label": fs.month, "USD": fs.cost_diesel_only_usd, "Line": "Diesel only"}),
-                    pd.DataFrame({"Month": fs.Month, "label": fs.month, "USD": fs.cost_hybrid_usd, "Line": "With the plan"})])
+                    pd.DataFrame({"Month": fs.Month, "label": fs.month, "USD": fs.cost_hybrid_usd, "Line": "With solar"})])
     x = alt.X("Month:Q", title="Month (2026)", scale=alt.Scale(domain=[1, len(fs)], nice=False),
               axis=alt.Axis(values=list(fs.Month), labelExpr=" ".join(
-                  f"datum.value == {m} ? '{lab}' :" for m, lab in zip(fs.Month, fs.month)) + " ''"))
+                  f"datum.value == {m} ? '{lab}' :" for m, lab in zip(fs.Month, fs.short)) + " ''"))
     lines = _lines(df, "Month", "USD", "Line", names, x_enc=x, y_title="USD per month", y_scale=alt.Scale(zero=True))
     peak = fs.loc[fs.diesel_price_per_litre.idxmax()]
-    title = (f"At the {peak.month} price peak (${peak.diesel_price_per_litre:.2f}/L), the monthly bill is "
+    title = (f"At the {peak.short} 2026 price peak (${peak.diesel_price_per_litre:.2f}/L), the monthly bill is "
              f"{_usd(peak.cost_hybrid_usd)} with the plan vs {_usd(peak.cost_diesel_only_usd)} on diesel only")
     chart = alt.layer(lines, *_end_labels(df, "Month", "USD", "Line", names)
-                      ).properties(padding=LABEL_PAD, height=260, title=_title(title))
-    caption = "Decision: how much fuel-price risk the plan removes (2026 Apia price swings applied to your price)."
+                      ).properties(height=260, title=_title(title))
+    caption = ("Decision: how much fuel-price risk the plan removes. Monthly generator bill, diesel only vs with "
+               "solar, replaying 2026's Apia price swings applied to your price.")
     return chart, caption
 
 
