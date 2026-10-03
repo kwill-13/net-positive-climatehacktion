@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # repo root -> `import sunsafe`
 
+import importlib
 import streamlit as st
 from dataclasses import asdict
 
@@ -15,6 +16,51 @@ try:
 except Exception as e:  # show the reason in the sidebar; the app cannot run analyses
     MODEL_IMPORT_ERROR = repr(e)
     run_sunsafe = None
+
+# Streamlit (including Streamlit Cloud after a git push) re-runs page scripts but keeps modules
+# outside app/ imported, so a model update could leave old `sunsafe` code in memory (e.g. a page
+# asking an old `config` for a new setting). init() calls _refresh_model_if_changed() on every
+# run: when any sunsafe/*.py file changes it reloads the package in place (so `config` objects
+# held by pages see the new values), re-binds the model function and clears cached results.
+_SUNSAFE_DIR = Path(__file__).resolve().parents[2] / "sunsafe"
+_RELOAD_ORDER = [  # dependencies first
+    "sunsafe.config", "sunsafe.hours", "sunsafe.interface", "sunsafe.load_profiles",
+    "sunsafe.energy.diesel", "sunsafe.energy.solar", "sunsafe.energy.simulate",
+    "sunsafe.energy.backup", "sunsafe.energy.headroom", "sunsafe.lifecycle.degradation",
+    "sunsafe.energy.sizing", "sunsafe.lifecycle.projection", "sunsafe.lifecycle.finance",
+    "sunsafe.lifecycle.strategy", "sunsafe.model",
+]
+
+
+def _model_mtime():
+    return max(p.stat().st_mtime for p in _SUNSAFE_DIR.rglob("*.py"))
+
+
+_MODEL_MTIME = _model_mtime()
+
+
+def _refresh_model_if_changed():
+    """Reload the sunsafe package if its source changed since it was imported. Returns True if reloaded."""
+    global _MODEL_MTIME, Inputs, run_sunsafe, MODEL_IMPORT_ERROR
+    current = _model_mtime()
+    if current == _MODEL_MTIME:
+        return False
+    _MODEL_MTIME = current
+    try:
+        for name in _RELOAD_ORDER:
+            if name in sys.modules:
+                importlib.reload(sys.modules[name])
+            else:
+                importlib.import_module(name)
+        Inputs = sys.modules["sunsafe.interface"].Inputs
+        run_sunsafe = sys.modules["sunsafe.model"].run_sunsafe
+        MODEL_IMPORT_ERROR = None
+    except Exception as e:  # keep the app up and say why
+        MODEL_IMPORT_ERROR = repr(e)
+        run_sunsafe = None
+    _run_cached.clear()
+    st.session_state.results = None   # results from the old model would be stale
+    return True
 
 DEFAULTS = dict(site_name="Fakaofo (test)", lat=-9.38, lon=-171.24, diesel_lpd=200.0, price=config.TOKELAU_DIESEL_PRICE_USD_PER_L,
                 known_load=False, load_kwh=600.0, critical_kw=5.0, target=90, chem="lithium",
@@ -49,6 +95,8 @@ def init(title, question=None, step=None):
     st.set_page_config(page_title="SunSafe", layout="wide")
     for k, v in DEFAULTS.items():
         st.session_state.setdefault(k, v)
+    if _refresh_model_if_changed():
+        st.toast("Model updated: cached results cleared. Re-run the analysis on Site Setup.")
     st.markdown(CSS, unsafe_allow_html=True)
     s = st.session_state
     r = s.results
