@@ -2,7 +2,7 @@ import streamlit as st
 from components.layout import init, require_results
 from exports.proposal import build_proposal, build_onepager
 
-init("Funding Case", "How do we communicate this to a funder?")
+init("Funding Case", "How do we communicate this to a funder?", step=5)
 r = require_results()
 st.markdown(build_proposal(r))
 a, b = st.columns(2)

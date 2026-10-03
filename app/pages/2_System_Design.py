@@ -2,7 +2,7 @@ import streamlit as st
 from components.layout import init, card, require_results
 from utils.formatting import money, pct
 
-init("System Design", "What should we build?")
+init("System Design", "What should we build?", step=1)
 r = require_results()
 z = r.sizing
 c = st.columns(4)
