@@ -66,8 +66,7 @@ App:
 
 Data and validation:
 - [x] Test 1: sizing vs Tokelau, framed as "day-one undersizes, year-8/15 lands near reality"
-- [ ] Test 2: 15-year decline of the real system (script sections 3 and 5), reported across fade
-      0.04-0.08. Output exists; write down the pass criteria before comparing, with the placeholder-fade caveat.
+- [ ] Test 2: 15-year decline of the real system (script sections 3 and 5), reported across fade 0.04-0.08. Output exists; write down the pass criteria before comparing, with the placeholder-fade caveat.
 - [ ] Test 3: REopt cross-check (first to cut if time runs short; keep the API key out of the repo)
 - [ ] Source every reference number in `SOURCES.md`
 - [ ] Tokelau technical review, if anyone managed to download it
