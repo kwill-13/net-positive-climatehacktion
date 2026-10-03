@@ -214,7 +214,7 @@ Tags in [brackets] match the source block in `sunsafe/config.py`.
 **Battery life, cost and O&M**
 - [RNZ: New solar system for Tokelau (2020 upgrade, NZ$9M)](https://www.rnz.co.nz/international/pacific-news/410925/new-solar-system-for-tokelau) [RNZ20]
 - [World Bank / KGGTF: Pacific BESS policy and program report](https://www.wbgkggtf.org/sites/kggtf/files/2023-02/COCF_Final%20Report_Development%20of%20regional%20Battery%20Energy%20Storage%20System%20(BESS)%20Policy%20and%20Program%20for%20the%20Pacific%20Island%20Countries%20(PICs).pdf) [WB-BESS]
-- [NREL ATB: Utility-scale battery storage](https://atb.nrel.gov/electricity/2024/utility-scale_battery_storage) [NREL-ATB]
+- [NREL ATB: Utility-scale battery storage](https://atb.nlr.gov/electricity/2024/utility-scale_battery_storage) [NREL-ATB]
 - [Energy-Storage.News: BNEF and Ember 2025 storage prices](https://www.energy-storage.news/battery-storage-system-prices-continue-to-fall-sharply-bnef-and-ember-reports-find/) [BNEF25]
 
 **Discount rate**

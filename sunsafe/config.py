@@ -17,7 +17,7 @@ SOURCES
   [RNZ20]   RNZ 2020, "New solar system for Tokelau" (lead-acid replaced by Li-ion; NZD 9M)
             https://www.rnz.co.nz/international/pacific-news/410925/new-solar-system-for-tokelau
   [NREL-ATB] NREL Annual Technology Baseline 2024, utility-scale battery storage
-            https://atb.nrel.gov/electricity/2024/utility-scale_battery_storage
+            https://atb.nlr.gov/electricity/2024/utility-scale_battery_storage
   [ADB-TON] ADB, Tonga Renewable Energy Project economic analysis (6% discount rate)
             https://www.adb.org/sites/default/files/linked-documents/49450-012-ea.pdf
   [APIA]    Apia monthly diesel retail prices 2026 (Samoa News Hub, Samoa Global News,
