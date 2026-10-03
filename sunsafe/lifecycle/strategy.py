@@ -147,7 +147,7 @@ def rolling_plan(stage_years: int, sized: Callable[[int, int], SizingOption], lo
     Args:
         stage_years: K, years per stage.
         sized: sizing lookup (design_year, battery_year) -> SizingOption, shared with B and C.
-        merge_short_last: when the last stage is shorter than K, fold it into the previous stage
+        merge_short_last: when the last stage is under half of K, fold it into the previous stage
             (that stage then runs to project_years) instead of buying a battery for a short stub.
         other args: as for evaluate().
 
@@ -155,10 +155,10 @@ def rolling_plan(stage_years: int, sized: Callable[[int, int], SizingOption], lo
         Strategy, or None if the project fits in one stage (that is strategy A).
     """
     starts = list(range(1, project_years + 1, stage_years))
-    short_last = project_years - starts[-1] + 1 < stage_years
+    stub = project_years - starts[-1] + 1           # length of the last stage
     if merge_short_last:
-        if not short_last:
-            return None                             # nothing to merge: same as the plain plan
+        if 2 * stub >= stage_years:
+            return None                             # last stage at least half a stage: keep it
         starts = starts[:-1]
     if len(starts) < 2:
         return None
