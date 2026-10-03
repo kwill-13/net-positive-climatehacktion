@@ -79,43 +79,29 @@ Done:
 - [x] Streamlit version: `requirements.txt` now says `streamlit>=1.39`. Site Setup
   (`st.map(height=...)`) and Lifecycle (`line_chart(x_label=...)`) crash on 1.35-1.38.
 
-Must fix before the demo:
-- [ ] **Show the recommended strategy.** "Recommended: B: replace in year 10" is only in
-  the collapsed "Model notes" panel, but it is SunSafe's main point. Show the warning
-  that starts with `Recommended:` on System Design and Lifecycle. The interface has no
-  field for it, and it stays frozen.
-- [ ] **Out-of-date banner:** `layout.py` line ~66 says "fuel path" is still a placeholder.
-  It is sourced (Apia 2026). The load shape, PV and lead-acid capex, fade and growth are
-  still placeholders.
-- [ ] **Validation box:** System Design shows "Not yet connected". Replace it with the
-  Fakaofo validation: 315 kWp / 1,481 kWh recommended vs the real 2012 install of
-  265-365 kWp and 1.1-1.6 MWh. Or remove the box.
+Re-checked after commit `eacc610`, on Streamlit 1.65 and 1.39, in 4 scenarios including
+"inputs edited without re-running". No page raised an error.
+- [x] Recommended strategy shown as a card on System Design and Lifecycle, and in the proposal.
+- [x] Out-of-date banner text fixed.
+- [x] Validation table on System Design: 315 kWp / 1,481 kWh is "Within range" for both.
+- [x] Model errors shown in the sidebar with the reason.
+- [x] Sidebar shows "Results for: <site>", and pages warn when inputs changed since the run.
+- [x] Final-year share card, plus a caption explaining the ~100% year-1 share.
+- [x] Caption when both lifecycle lines are identical (build big).
+- [x] Horizon used in place of "year 15"; warning when payback exceeds the horizon.
+- [x] `app/README.md` updated.
 
-Should fix:
-- [ ] **Hidden model errors:** when the model raises an error, the app falls back to the
-  fake and the reason is lost (the fallback warning contains "FAKE", so it is filtered
-  from the notes). Include `repr(e)` and show it in the sidebar.
-- [ ] **Out-of-date results:** after inputs change without a re-run, pages show the old
-  results while the sidebar shows the new site name. Show `r.inputs.site_name`, or flag
-  "inputs changed, re-run".
-- [ ] **"100%" year-1 share against a 95% target:** this is correct (99.9%), because the
-  design is sized to hold the target through year 15. Add a year-N share card
-  (`r.lifecycle[-1].share_funded_year_15`) or a one-line explanation.
-- [ ] **One line instead of two on the lifecycle chart:** when the recommendation is
-  "A: build big" (e.g. the plain lithium defaults), both lines are identical because
-  there is no replacement. Add a caption in that case.
-- [ ] **"Year 15" is hardcoded** in the Lifecycle question and chart legend. Use
-  `r.inputs.project_years`. Also flag a payback longer than the horizon (the edge case
-  showed 10.1 yrs on a 5-yr project).
-- [ ] **`app/README.md` is out of date:** it says the model team swaps `run_sunsafe` in
-  interface.py, and to `pip install streamlit pandas`. Point to `sunsafe.model` and
-  `pip install -r requirements.txt` instead.
+Optional:
+- [ ] **Validation table scope:** it appears for any site name containing "fakaofo",
+  including the plain defaults ("Fakaofo (test)", lithium, 90%, estimated load), where it
+  shows "Below range". Consider showing it only for the validation inputs (lead-acid,
+  95%, 600 kWh/day), or only when the preset is loaded.
 
 Housekeeping:
 - [ ] **Offline demo:** run each demo site once beforehand, so its NASA weather is cached
   in `data/cache/`.
 - [ ] **Git uploads:** browser uploads to GitHub ignore `.gitignore`. Commit `081da0b`
-  re-added `app/**/__pycache__/*.pyc`, and they were removed again. Upload source files
+  and `d06797a` re-added `app/**/__pycache__/*.pyc`; they were removed again each time. Upload source files
   only, or use `git` from the command line.
 
 **Reference numbers** for the Fakaofo demo: 600 kWh/day, lead-acid, 95% target,
