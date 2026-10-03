@@ -16,11 +16,11 @@ work in year 15, and turns the plan into a funding case.
 
 ## Ground rules
 
-- **MODEL FROZEN**, except: unfrozen 3-4 Oct for rolling plan + growth schedule; re-freeze after.
-  (Branch `rolling-plan`; tag `model-freeze-2026-10-03` marks the earlier frozen state.)
-  Any other change to defaults or model logic goes through William, with a sourced reason.
+- **MODEL FROZEN** (re-frozen 4 Oct 2026 after the rolling plan + growth schedule merged; tag
+  `model-freeze-2026-10-04`. Tag `model-freeze-2026-10-03` marks the earlier frozen state.)
+  Any change to defaults or model logic goes through William, with a sourced reason.
 - `sunsafe/interface.py` is the model-app contract (data definitions only): do not rename or
-  change its fields. The implementation is `sunsafe.model.run_sunsafe`; there is no fake model.
+  change its fields. (`Results.plan_stages` was added 4 Oct as an optional field, default `[]`.) The implementation is `sunsafe.model.run_sunsafe`; there is no fake model.
 - All assumptions live in `sunsafe/config.py` with units; placeholders are marked TODO.
 - Don't tune the model to hit the Tokelau validation numbers; report the gap and source the assumptions.
 - Dependencies: numpy, pandas, requests, pytest for the model. `streamlit` (>=1.39) is allowed
@@ -48,6 +48,11 @@ work in year 15, and turns the plan into a funding case.
 ## Reference run (Fakaofo, 600 kWh/day, lead-acid, 95%, USD 1.87/L)
 
 Assumes 9%/yr demand growth and 3%/yr lead-acid fade (both Tokelau-derived).
+Strategies: A build big, B same-size replacement, C staged expansion, D rolling plan (stages of
+6/8/10 yrs, new battery + added PV each stage). The figures below are from `scripts/run_tokelau.py`,
+which compares A/B/C only. The app runs A-D: for this preset it recommends **D, 6-yr stages**
+(upgrades in years 7 and 13), NPV USD 2.74M vs 2.80M for C. With growth 9% for 5 yrs then 3%,
+C wins at 15 yrs and D at 20-25 yrs (`scripts/run_pacific_presets.py`).
 - **Recommended: staged expansion (C).** Build 363 kWp / 1,612 kWh (capex ~USD 1.47M). In year 9,
   add 332 kWp and a new 2,858 kWh battery.
   - This matches what Tokelau actually did: built in 2012, then in 2020 (~year 8) added 210 kWp
@@ -71,12 +76,14 @@ Assumes 9%/yr demand growth and 3%/yr lead-acid fade (both Tokelau-derived).
 - Placeholders: load shape, PV capex point value (sourced range USD 2,500-4,000/kW), lithium fade,
   headroom inputs (except the freezer).
 - The battery references are reconciled (nominal 2.46-3.38 MWh per atoll; ITP's 1.1-1.6 MWh is the usable half).
-- Staged expansion (C) assumes the upgrade happens on time and is funded; added PV is costed at
+- Staged expansion (C) and the rolling plan (D) assume each upgrade happens on time and is funded; added PV is costed at
   today's real price and derated like the original panels.
 - The model over-predicts the 2013 solar fraction by ~1-4 points (outages, shading and generator
   charging are not modelled).
 - Modelled real-system payback is 13.8-23.7 yrs (O&M dependent) vs ~9 reported (method unknown).
 - Results depend heavily on delivered diesel price.
+- `om_fund_per_year_usd` saves only toward the first reinvestment; D's later stages are in NPV/LCOE
+  but not in the yearly fund figure.
 - Interface gaps: no fuel-shock slider function, no per-load backup hours, no kWh/day per new use.
 
 ## Status checklist (as of 2026-10-03)
