@@ -7,8 +7,8 @@ init("Site Setup", "What are we telling SunSafe? Fill in the four input groups, 
 s = st.session_state
 tag = lambda t: st.markdown(f'<span class="tag inp">{t}</span>', unsafe_allow_html=True)
 PRESETS = {"Fakaofo (validation site)": ("Fakaofo", -9.38, -171.24),
-           "Nukunonu (approx. coordinates)": ("Nukunonu", -9.17, -171.85),
-           "Atafu (approx. coordinates)": ("Atafu", -8.54, -172.50)}
+           "Nukunonu (validation site, approx. coordinates)": ("Nukunonu", -9.17, -171.85),
+           "Atafu (validation site, approx. coordinates)": ("Atafu", -8.54, -172.50)}
 
 
 def apply_preset():

@@ -38,7 +38,8 @@ work in year 15, and turns the plan into a funding case.
   Below USD 2.34/L (8%) or 2.11/L (6%) diesel-only is cheaper per kWh. Apia retail 2026
   (USD 1.17-1.93/L) is a lower bound, not a site price.
 - Shows the recommended strategy (from the `Recommended:` warning), model notes, a stale-inputs warning,
-  and a Fakaofo validation table (comparison only, not a pass/fail claim).
+  and a Tokelau validation table for Fakaofo, Nukunonu and Atafu (comparison only, not a pass/fail
+  claim; warns when inputs differ from the validation case). Other sites show a "not validated" note.
 - Never put engineering calculations in the app. Only app-side conversion: diesel litres to tCO2e
   (2.68 kg CO2/L) in `app/utils/formatting.py`.
 

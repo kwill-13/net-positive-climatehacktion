@@ -94,10 +94,9 @@ Re-checked after commit `eacc610`, on Streamlit 1.65 and 1.39, in 4 scenarios in
 - [x] `app/README.md` updated.
 
 Optional:
-- [ ] **Validation table scope:** it appears for any site name containing "fakaofo",
-  including the plain defaults ("Fakaofo (test)", lithium, 90%, estimated load), where it
-  shows "Below range". Consider showing it only for the validation inputs (lead-acid,
-  95%, 600 kWh/day), or only when the preset is loaded.
+- [x] **Validation table scope:** now shown for all three Tokelau atolls, because Source A's
+  range covers all three systems. It warns when inputs differ from the validation case
+  (lead-acid, 95%, ~600 kWh/day). Any other site shows "not validated against a real system".
 
 Housekeeping:
 - [ ] **Offline demo:** run each demo site once beforehand, so its NASA weather is cached
