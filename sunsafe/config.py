@@ -16,8 +16,10 @@ SOURCES
             https://docs.nlr.gov/docs/fy12osti/51664.pdf
   [RNZ20]   RNZ 2020, "New solar system for Tokelau" (lead-acid replaced by Li-ion; NZD 9M)
             https://www.rnz.co.nz/international/pacific-news/410925/new-solar-system-for-tokelau
-  [NREL-ATB] NREL Annual Technology Baseline, utility-scale battery storage
-            https://atb.nrel.gov/
+  [NREL-ATB] NREL Annual Technology Baseline 2024, utility-scale battery storage
+            https://atb.nrel.gov/electricity/2024/utility-scale_battery_storage
+  [ADB-TON] ADB, Tonga Renewable Energy Project economic analysis (6% discount rate)
+            https://www.adb.org/sites/default/files/linked-documents/49450-012-ea.pdf
   [APIA]    Apia monthly diesel retail prices 2026 (Samoa News Hub, Samoa Global News,
             Samoa Observer, Talamua)
             https://samoanewshub.com/2026/01/01/fuel-prices-increase-across-samoa-for-january-2026/
@@ -37,7 +39,8 @@ SOURCES
             https://www.energy-storage.news/battery-storage-system-prices-continue-to-fall-sharply-bnef-and-ember-reports-find/
   [HOMER]   HOMER Energy, diesel O&M costs (~USD 0.02/kWh, low case)
             https://homerenergy.com/docs/knowledgebase/article/diesel-om-costs/
-  [CT13]    CleanTechnica 2013, Tokelau 100% solar: NZD ~7M, ~9-year payback (validation only)
+  [CT13]    CleanTechnica 2013, Tokelau 100% solar: NZ advance NZD 7M (total project NZD 8.5M
+            per [MAT]), ~9-year simple payback (validation only; see SOURCES.md)
             https://cleantechnica.com/2013/10/06/an-island-tokelau-powered-100-by-solar-energy/
 """
 
@@ -128,7 +131,7 @@ BATTERY_COST_USD_PER_KWH = {
 }
 
 DISCOUNT_RATE = 0.08             # 0-1 per year, real. Sourced: ADB uses 6-9% in Pacific analyses
-                                 # [ADB-NRU]; scripts/run_tokelau.py also reports 6%
+                                 # (9% [ADB-NRU], 6% [ADB-TON]); scripts/run_tokelau.py also reports 6%
 DISCOUNT_RATE_LOW = 0.06         # sensitivity case
 PV_LIFE_YEARS = 20               # years, PV array + inverters (simplification)
 
@@ -175,7 +178,7 @@ FUEL_SHOCK_APIA_WST_PER_L = [
     ("2026-04", 3.09),
     ("2026-05", 4.50),
     ("2026-06", 5.31),
-    ("2026-07", 4.49),
+    ("2026-07", 4.49),           # derived: June 5.31 - 0.823 drop = 4.487 [APIA]; article text reads 4.48
     ("2026-08", 3.89),
     ("2026-09", 4.22),
     ("2026-10", 4.44),

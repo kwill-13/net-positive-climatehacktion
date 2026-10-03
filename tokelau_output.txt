@@ -236,12 +236,12 @@ Daily load 720 kWh/day: B: replace in year 10, 378 kWp / 1777 kWh, capex $1,566,
   Breakeven diesel price at 6%: USD 2.11/L (hybrid cheaper per kWh above this)
 
 ====================================================================================================
-7. THREE ATOLLS: simple payback at USD 2.70/L, 600 kWh/day each, vs reported ~9 yrs (NZD 7M = USD 5.6M)
+7. THREE ATOLLS: simple payback at USD 2.70/L, 600 kWh/day each, vs reported ~9 yrs. Real cost: NZD 7.0M NZ advance (USD 5.6M), NZD 8.5M total (USD 6.8M)
 ====================================================================================================
-atoll      |   recommended design     capex $  payback | real 300/1350, saving $/yr  payback @ real capex
-Fakaofo    |   315 kWp / 1481 kWh   1,305,007     7.7y |                    205,478                 10.9y
-Nukunonu   |   315 kWp / 1481 kWh   1,305,007     7.7y |                    205,478                 10.9y
-Atafu      |   322 kWp / 1481 kWh   1,323,044     7.9y |                    205,372                 10.9y
-ALL THREE  |                        3,933,057     7.8y |                                            10.9y
-Reported: ~9 years. 'Payback @ real capex' uses the actual project cost and the model's year-1 fuel + generator O&M saving minus solar O&M.
+atoll      |   recommended design     capex $  payback | real 300/1350, saving $/yr  payback @ NZD 7M  @ NZD 8.5M
+Fakaofo    |   315 kWp / 1481 kWh   1,305,007     7.7y |                    205,478             10.9y       13.3y
+Nukunonu   |   315 kWp / 1481 kWh   1,305,007     7.7y |                    205,478             10.9y       13.3y
+Atafu      |   322 kWp / 1481 kWh   1,323,044     7.9y |                    205,372             10.9y       13.3y
+ALL THREE  |                        3,933,057     7.8y |                                        10.9y       13.3y
+Reported: ~9 years (method not stated). Real-system payback = real cost / (model's year-1 fuel + generator O&M saving - solar O&M).
 

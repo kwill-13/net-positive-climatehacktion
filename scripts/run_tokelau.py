@@ -59,9 +59,12 @@ DISCOUNT_RATES = [config.DISCOUNT_RATE, config.DISCOUNT_RATE_LOW]
 # The three atolls, ~200 L/day diesel each [SPC16] x 3 kWh/L = ~600 kWh/day each.
 ATOLLS = [("Fakaofo", LAT, LON), ("Nukunonu", -9.17, -171.83), ("Atafu", -8.54, -172.50)]
 ATOLL_DAILY_KWH = 600
-# Tokelau 2012 project: NZD ~7M for all three atolls, reported ~9-year simple payback
-# [CT13] in config.py sources. Converted at config.NZD_TO_USD_2012.
-TOKELAU_2012_CAPEX_NZD = 7.0e6
+# Tokelau 2012 project, all three atolls (see SOURCES.md items 3-4):
+# - NZD 7M was New Zealand's ADVANCE [CT13]; the total project cost was NZD 8.5M [MAT].
+# - Reported ~9-year simple payback [CT13], method not stated.
+# Payback is shown at both costs. Converted at config.NZD_TO_USD_2012.
+TOKELAU_2012_CAPEX_NZD = 7.0e6           # NZ advance
+TOKELAU_2012_TOTAL_COST_NZD = 8.5e6      # total project cost
 TOKELAU_REPORTED_PAYBACK_YEARS = 9
 
 
@@ -241,12 +244,14 @@ def price_sensitivity():
 def atoll_payback():
     """Section 7: model payback for all three atolls vs the reported ~9 years."""
     real_capex_usd = TOKELAU_2012_CAPEX_NZD * config.NZD_TO_USD_2012
+    total_cost_usd = TOKELAU_2012_TOTAL_COST_NZD * config.NZD_TO_USD_2012
     _header(f"7. THREE ATOLLS: simple payback at USD {DIESEL_PRICE:.2f}/L, {ATOLL_DAILY_KWH} "
-            f"kWh/day each, vs reported ~{TOKELAU_REPORTED_PAYBACK_YEARS} yrs "
-            f"(NZD {TOKELAU_2012_CAPEX_NZD / 1e6:.0f}M = USD {real_capex_usd / 1e6:.1f}M)")
+            f"kWh/day each, vs reported ~{TOKELAU_REPORTED_PAYBACK_YEARS} yrs. Real cost: "
+            f"NZD {TOKELAU_2012_CAPEX_NZD / 1e6:.1f}M NZ advance (USD {real_capex_usd / 1e6:.1f}M), "
+            f"NZD {TOKELAU_2012_TOTAL_COST_NZD / 1e6:.1f}M total (USD {total_cost_usd / 1e6:.1f}M)")
     pv_r, batt_r = REAL_SYSTEM
     print(f"{'atoll':<10} | {'recommended design':>20} {'capex $':>11} {'payback':>8} | "
-          f"{'real 300/1350, saving $/yr':>26} {'payback @ real capex':>21}")
+          f"{'real 300/1350, saving $/yr':>26} {'payback @ NZD 7M':>17} {'@ NZD 8.5M':>11}")
     totals = {"rec_capex": 0.0, "rec_net": 0.0, "real_net": 0.0}
     for name, lat, lon in ATOLLS:
         _, comp = _detailed(name, lat, lon, ATOLL_DAILY_KWH)
@@ -263,12 +268,13 @@ def atoll_payback():
         totals["real_net"] += e_real.annual_saving_year1_usd - om_real
         print(f"{name:<10} | {f'{rec.pv_kw:.0f} kWp / {rec.battery_kwh:.0f} kWh':>20} "
               f"{rec.capex_usd:>11,.0f} {e_rec.payback_years:>7.1f}y | "
-              f"{e_real.annual_saving_year1_usd:>26,.0f} {e_real.payback_years:>20.1f}y")
+              f"{e_real.annual_saving_year1_usd:>26,.0f} {e_real.payback_years:>16.1f}y "
+              f"{e_real.payback_years * total_cost_usd / real_capex_usd:>10.1f}y")
     print(f"{'ALL THREE':<10} | {'':>20} {totals['rec_capex']:>11,.0f} "
           f"{totals['rec_capex'] / totals['rec_net']:>7.1f}y | {'':>26} "
-          f"{real_capex_usd / totals['real_net']:>20.1f}y")
-    print(f"Reported: ~{TOKELAU_REPORTED_PAYBACK_YEARS} years. 'Payback @ real capex' uses the actual "
-          f"project cost and the model's year-1 fuel + generator O&M saving minus solar O&M.")
+          f"{real_capex_usd / totals['real_net']:>16.1f}y {total_cost_usd / totals['real_net']:>10.1f}y")
+    print(f"Reported: ~{TOKELAU_REPORTED_PAYBACK_YEARS} years (method not stated). Real-system payback = "
+          f"real cost / (model's year-1 fuel + generator O&M saving - solar O&M).")
     print()
 
 
