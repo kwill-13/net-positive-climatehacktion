@@ -18,12 +18,27 @@ SOURCES
             https://www.rnz.co.nz/international/pacific-news/410925/new-solar-system-for-tokelau
   [NREL-ATB] NREL Annual Technology Baseline, utility-scale battery storage
             https://atb.nrel.gov/
-  No URL supplied yet (add when available):
-  [APIA]    Apia monthly diesel retail prices 2026: Samoa Global News, Samoa Observer, Talamua
+  [APIA]    Apia monthly diesel retail prices 2026 (Samoa News Hub, Samoa Global News,
+            Samoa Observer, Talamua)
+            https://samoanewshub.com/2026/01/01/fuel-prices-increase-across-samoa-for-january-2026/
+            https://samoaglobalnews.com/samoa-fuel-prices-rise-across-all-products-from-april-1/
+            https://www.samoaobserver.ws/category/samoa/120219
+            https://talamua.com/?p=61207
+            https://talamua.com/?p=62013
+            https://talamua.com/?p=62357
+  [FX-WST]  WST/USD 0.3635 on 3 Oct 2026
+            https://www.currency.me.uk/convert/wst/usd
   [POISED]  CIF / ADB POISED case study, Maldives outer islands (0.28-0.37 L/kWh)
-  [WB-BESS] World Bank, Pacific battery energy storage report (Li-ion life 10-15 yrs)
-  [BNEF25]  BloombergNEF 2025 battery price survey (USD 117/kWh turnkey; -31% in 2025)
-  [HOMER]   HOMER Pro default generator O&M (~USD 0.02/kWh, low case)
+            https://www.cif.org/sites/cif_enc/files/knowledge-documents/66436_191219_maldives_case_study_v7s.pdf
+  [WB-BESS] World Bank, regional BESS policy and program for the Pacific Island Countries
+            (Li-ion life 10-15 yrs)
+            https://www.wbgkggtf.org/sites/kggtf/files/2023-02/COCF_Final%20Report_Development%20of%20regional%20Battery%20Energy%20Storage%20System%20(BESS)%20Policy%20and%20Program%20for%20the%20Pacific%20Island%20Countries%20(PICs).pdf
+  [BNEF25]  BNEF / Ember 2025 storage prices (USD 117/kWh turnkey; -31% in 2025), via Energy-Storage.News
+            https://www.energy-storage.news/battery-storage-system-prices-continue-to-fall-sharply-bnef-and-ember-reports-find/
+  [HOMER]   HOMER Energy, diesel O&M costs (~USD 0.02/kWh, low case)
+            https://homerenergy.com/docs/knowledgebase/article/diesel-om-costs/
+  [CT13]    CleanTechnica 2013, Tokelau 100% solar: NZD ~7M, ~9-year payback (validation only)
+            https://cleantechnica.com/2013/10/06/an-island-tokelau-powered-100-by-solar-energy/
 """
 
 from pathlib import Path
@@ -152,7 +167,9 @@ OM_BATTERY_USD_PER_KWH_YEAR = 10.0
 
 # -------------------------------------------------------------- fuel shock ---
 # Sourced: Apia monthly diesel retail prices 2026, WST/litre [APIA] (Samoa Global News,
-# Samoa Observer, Talamua). Applied as MULTIPLIERS relative to March to the site's own price.
+# Samoa Observer, Talamua). Applied as MULTIPLIERS relative to March to the site's own price,
+# so the currency cancels out. For reference: 2.99-5.31 WST/L = USD 1.09-1.93/L at
+# WST_TO_USD [FX-WST].
 FUEL_SHOCK_APIA_WST_PER_L = [
     ("2026-03", 2.99),
     ("2026-04", 3.09),
@@ -164,6 +181,8 @@ FUEL_SHOCK_APIA_WST_PER_L = [
     ("2026-10", 4.44),
 ]
 _FUEL_SHOCK_BASE = FUEL_SHOCK_APIA_WST_PER_L[0][1]          # March 2026 = 1.00
+WST_TO_USD = 0.3635              # USD per WST, 3 Oct 2026 [FX-WST]. Reference only: not used in
+                                 # any calculation (fuel shock uses ratios)
 FUEL_SHOCK_2026 = [(m, p / _FUEL_SHOCK_BASE) for m, p in FUEL_SHOCK_APIA_WST_PER_L]
 
 # --------------------------------------------------------------- headroom ----

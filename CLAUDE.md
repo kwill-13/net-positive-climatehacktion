@@ -16,6 +16,9 @@ work in year 15, and turns the plan into a funding case.
 
 ## Ground rules
 
+- MODEL FROZEN (3 Oct 2026): do not change defaults in `sunsafe/config.py` or model logic.
+  Only documentation, comments, sources and bug fixes agreed with William.
+
 - `sunsafe/interface.py` is the model-app contract: do not rename or change its fields.
 - All assumptions live in `sunsafe/config.py` with units; placeholders are marked TODO.
 - Don't tune the model to hit the Tokelau validation numbers; report the gap.

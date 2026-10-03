@@ -60,7 +60,7 @@ DISCOUNT_RATES = [config.DISCOUNT_RATE, config.DISCOUNT_RATE_LOW]
 ATOLLS = [("Fakaofo", LAT, LON), ("Nukunonu", -9.17, -171.83), ("Atafu", -8.54, -172.50)]
 ATOLL_DAILY_KWH = 600
 # Tokelau 2012 project: NZD ~7M for all three atolls, reported ~9-year simple payback
-# (CleanTechnica 2013; URL not yet supplied). Converted at config.NZD_TO_USD_2012.
+# [CT13] in config.py sources. Converted at config.NZD_TO_USD_2012.
 TOKELAU_2012_CAPEX_NZD = 7.0e6
 TOKELAU_REPORTED_PAYBACK_YEARS = 9
 
