@@ -179,7 +179,7 @@ FUEL_SHOCK_APIA_WST_PER_L = [
     ("2026-04", 3.09),
     ("2026-05", 4.50),
     ("2026-06", 5.31),
-    ("2026-07", 4.49),           # derived: June 5.31 - 0.823 drop = 4.487 [APIA]; article text reads 4.48
+    ("2026-07", 4.48),           # stated: "dropping from $5.31 in June to $4.48 per litre for July" [APIA]
     ("2026-08", 3.89),
     ("2026-09", 4.22),
     ("2026-10", 4.44),

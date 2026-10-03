@@ -1,14 +1,21 @@
 import dataclasses
 
+import sunsafe.interface
+import sunsafe_interface
 from sunsafe import config, model
-from sunsafe.interface import Results, run_sunsafe_fake
+from sunsafe.interface import (Finance, FuelShockMonth, Headroom, LifecycleYear, Results,
+                               Sizing)
 
 
 def test_run_sunsafe_matches_contract(lead_acid_run):
     inputs, real, _ = lead_acid_run
-    fake = run_sunsafe_fake(inputs)
     assert isinstance(real, Results)
-    assert [f.name for f in dataclasses.fields(real)] == [f.name for f in dataclasses.fields(fake)]
+    for f in dataclasses.fields(Results):
+        assert hasattr(real, f.name), f.name
+    assert isinstance(real.sizing, Sizing) and isinstance(real.finance, Finance)
+    assert isinstance(real.headroom, Headroom)
+    assert all(isinstance(y, LifecycleYear) for y in real.lifecycle)
+    assert all(isinstance(m, FuelShockMonth) for m in real.fuel_shock)
     assert real.sizing.pv_kw > 0 and real.sizing.battery_kwh >= 0
     assert real.backup_hours >= 0
     assert len(real.lifecycle) == inputs.project_years
@@ -16,15 +23,14 @@ def test_run_sunsafe_matches_contract(lead_acid_run):
     assert any("SYNTHETIC" in w for w in real.warnings)
 
 
-def test_run_sunsafe_uses_nothing_from_the_fake(lead_acid_run):
-    # The fixture ran with run_sunsafe_fake patched to raise, so getting here proves it was
-    # never called. Also: the model no longer imports it, and no FAKE warning remains.
+def test_no_fake_model_left(lead_acid_run):
+    # The fake implementation has been removed: the contract holds data definitions only,
+    # and the root shim runs the real model.
+    assert not hasattr(sunsafe.interface, "run_sunsafe_fake")
+    assert not hasattr(sunsafe.interface, "run_sunsafe")
+    assert sunsafe_interface.run_sunsafe is model.run_sunsafe
     _, real, _ = lead_acid_run
-    assert not hasattr(model, "run_sunsafe_fake")
     assert not any("FAKE" in w for w in real.warnings)
-    fake = run_sunsafe_fake(real.inputs)
-    for name in ("sizing", "lifecycle", "finance", "fuel_shock", "headroom"):
-        assert getattr(real, name) != getattr(fake, name), name
 
 
 def test_lifecycle_fields_follow_contract(lead_acid_run):

@@ -33,8 +33,8 @@ See [HANDOFF.md](HANDOFF.md) for how to call the model from your part, and
 
 | Path | What it does | Owner |
 |---|---|---|
-| `sunsafe/interface.py` | Contract between model and app: `Inputs`, `Results`, `run_sunsafe_fake` | shared (change only by agreement) |
-| `sunsafe_interface.py` | Root shim that re-exports `sunsafe/interface.py` | shared |
+| `sunsafe/interface.py` | Contract between model and app: `Inputs`, `Results` (data definitions only) | shared (change only by agreement) |
+| `sunsafe_interface.py` | Root shim: re-exports `sunsafe/interface.py` and `sunsafe.model.run_sunsafe` | shared |
 | `sunsafe/config.py` | Every assumption: costs, efficiencies, battery params, fade, search bounds | energy model (William) |
 | `sunsafe/energy/solar.py` | NASA POWER fetch + cache, PV output per kWp | energy model (William) |
 | `sunsafe/energy/simulate.py` | Hourly solar/battery/diesel dispatch, `SimResult` | energy model (William) |

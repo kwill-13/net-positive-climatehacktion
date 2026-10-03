@@ -16,9 +16,10 @@ work in year 15, and turns the plan into a funding case.
 
 ## Ground rules
 
-- **The model is frozen** (tag `model-freeze-2026-10-03`). No changes to defaults or model logic.
-  If a number looks wrong, raise it with William; do not edit `config.py`.
-- `sunsafe/interface.py` is the model-app contract: do not rename or change its fields.
+- The model freeze was lifted on 3 Oct 2026 (tag `model-freeze-2026-10-03` marks the frozen state).
+  Changes to defaults or model logic still go through William, with a sourced reason.
+- `sunsafe/interface.py` is the model-app contract (data definitions only): do not rename or
+  change its fields. The implementation is `sunsafe.model.run_sunsafe`; there is no fake model.
 - All assumptions live in `sunsafe/config.py` with units; placeholders are marked TODO.
 - Don't tune the model to hit the Tokelau validation numbers; report the gap and source the assumptions.
 - Dependencies: numpy, pandas, requests, pytest for the model. `streamlit` (>=1.39) is allowed
@@ -30,7 +31,7 @@ work in year 15, and turns the plan into a funding case.
 
 - Run from repo root: `streamlit run app/app.py`. Live link deployed on Streamlit Cloud.
 - Uses the real model: `from sunsafe.model import run_sunsafe` in `app/components/layout.py`.
-  If the import or run fails, it falls back to the fake model and shows the error in the sidebar.
+  If the import or a run fails, it shows the error (sidebar and Site Setup) and no results.
 - Only `app/components/layout.py` imports the model. Pages read fields off `Results`.
 - Results are cached with `st.cache_data`; a new site fetches NASA POWER weather (~15 s).
 - Default diesel price is USD 2.70/L (Tokelau delivered price, derived; see SOURCES.md item 5).

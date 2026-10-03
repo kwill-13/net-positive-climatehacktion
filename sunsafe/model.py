@@ -6,8 +6,8 @@ Pipeline:
   2. Strategy comparison (sunsafe/lifecycle/strategy.py): "build big" vs "moderate +
      planned battery replacement"; the recommended design is the lowest 15-year NPV that
      meets the renewable target EVERY year.
-  3. Every Results field is filled from that recommended design. Nothing comes from
-     run_sunsafe_fake any more; `warnings` lists the placeholder assumptions still in use.
+  3. Every Results field is filled from that recommended design; `warnings` lists the
+     placeholder assumptions still in use.
 """
 
 from typing import List
@@ -158,7 +158,8 @@ def run_sunsafe_detailed(inputs: Inputs):
 
 if __name__ == "__main__":
     demo = Inputs(site_name="Fakaofo (test)", latitude=-9.38, longitude=-171.24,
-                  diesel_litres_per_day=200, diesel_price_per_litre=1.10)
+                  diesel_litres_per_day=200,
+                  diesel_price_per_litre=config.TOKELAU_DIESEL_PRICE_USD_PER_L)
     r = run_sunsafe(demo)
     print(r.sizing)
     print(r.finance)

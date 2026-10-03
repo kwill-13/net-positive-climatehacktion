@@ -1,8 +1,10 @@
 """
-Backwards-compatible shim. The contract now lives in `sunsafe/interface.py`.
+Backwards-compatible shim. The contract lives in `sunsafe/interface.py`; the model in
+`sunsafe/model.py`.
 
-`from sunsafe_interface import run_sunsafe, Inputs, Results` keeps working.
+`from sunsafe_interface import run_sunsafe, Inputs, Results` keeps working and runs the
+real model.
 """
 
 from sunsafe.interface import *  # noqa: F401,F403
-from sunsafe.interface import run_sunsafe, run_sunsafe_fake  # noqa: F401  (explicit for IDEs)
+from sunsafe.model import run_sunsafe  # noqa: F401

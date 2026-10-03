@@ -57,9 +57,15 @@ with R:
 if st.button("Run SunSafe Analysis", type="primary", use_container_width=True):
     with st.status("Running SunSafe analysis (a new site fetches NASA solar data, about 15 s)...", expanded=True) as status:
         s.results = run_analysis()
-        for step in ["Loading site information", "Loading solar resource", "Simulating electricity demand",
-                     "Sizing solar + battery", "Simulating lifecycle", "Calculating financial case",
-                     "Assessing electrification headroom"]:
-            st.write(f"✓ {step}")
-        status.update(label="Analysis complete", state="complete")
-    st.success("Done. Open **System Design** in the sidebar to see the result.")
+        if s.results is not None:
+            for step in ["Loading site information", "Loading solar resource", "Simulating electricity demand",
+                         "Sizing solar + battery", "Simulating lifecycle", "Calculating financial case",
+                         "Assessing electrification headroom"]:
+                st.write(f"✓ {step}")
+            status.update(label="Analysis complete", state="complete")
+        else:
+            status.update(label="Analysis failed", state="error")
+    if s.results is not None:
+        st.success("Done. Open **System Design** in the sidebar to see the result.")
+    else:
+        st.error(f"The model could not run these inputs: {s.model_error}")

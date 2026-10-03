@@ -120,14 +120,15 @@ checked against its article.
 | 2026-04 | 3.09 | same | same |
 | 2026-05 | 4.50 | "from $4.50 to $5.31" | Samoa Observer, 1 Jun 2026: https://www.samoaobserver.ws/category/samoa/120219 |
 | 2026-06 | 5.31 | same | same |
-| 2026-07 | 4.49 | drop of 82.3 sene from $5.31 | Talamua, 1 Jul 2026: https://talamua.com/?p=61207 |
+| 2026-07 | 4.48 | "dropping from $5.31 in June to $4.48 per litre for July" | Talamua, 1 Jul 2026: https://talamua.com/?p=61207 |
 | 2026-08 | 3.89 | "from $3.89 to $4.22" | Talamua, 1 Sep 2026: https://talamua.com/?p=62013 |
 | 2026-09 | 4.22 | same | same |
 | 2026-10 | 4.44 | "from $4.22 to $4.44" | Talamua, 1 Oct 2026: https://talamua.com/?p=62357 |
 
-- **July is derived, not quoted:** 5.31 - 0.823 = 4.487, rounded to 4.49. Our fetch of the
-  article read "$4.48 per litre" as the stated price. That is a 0.01 difference (0.2%), with
-  negligible effect. The model is frozen, so 4.49 is kept and noted.
+- **July is stated in the article.** The verbatim sentence is "Diesel price decreased by
+  82.3 sene per litre, dropping from $5.31 in June to $4.48 per litre for July."
+  - The sene drop implies 4.487, but the stated price is used.
+  - The value was 4.49 (derived) until 3 Oct 2026.
 - **Lower-bound check:** Samoa News Hub, 1 Jan 2026, gives January diesel at $3.22 (from
   $3.10 in December). At 0.3635 USD/WST that is USD 1.17/L, matching config.py.
   https://samoanewshub.com/2026/01/01/fuel-prices-increase-across-samoa-for-january-2026/
@@ -148,8 +149,8 @@ Found (qualitative only):
   - "The battery capacity fades, maintenance requirements of the generators increase, and
     fuel consumption rises."
   - "Load growth was found to be increasing at a rate of 9% per year historically."
-  - **This is above the model's 3%/yr placeholder.** State it as a limitation; the model is
-    frozen.
+  - **This is above the model's 3%/yr default placeholder.** State it as a limitation.
+    Users can set demand growth on the app's Site Setup page.
 - **Load size:** TendersGo, Tokelau battery upgrade, gives "~30 kW load per island"
   (lower-reliability source).
   https://www.tendersgo.com/post/tokelaus-90-solar-power-transition-battery-upgrade-project-6642
@@ -195,7 +196,6 @@ Missing:
 4. **No measured performance data:** there is none for 2012-2020 (diesel use, battery
    health, renewable share). Decline is described only qualitatively.
 5. **Load growth:** reported historically as 9%/yr; the model assumes a 3%/yr placeholder.
-6. **Fuel shock:** July 2026 is derived from the reported drop (4.49 vs 4.48 as stated).
 
 ---
 

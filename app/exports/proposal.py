@@ -7,7 +7,6 @@ def build_proposal(r):
     last = r.lifecycle[-1]
     rec = next((w for w in r.warnings if w.startswith("Recommended:")), "")
     return f"""# SunSafe Funding Proposal — {i.site_name}
-{"**DEMO — illustrative numbers, not an engineering recommendation.**" if any("FAKE" in w for w in r.warnings) else ""}
 
 ## Project overview
 Diesel-to-solar transition planning for {i.site_name} ({i.latitude:.2f}, {i.longitude:.2f}).
@@ -45,7 +44,6 @@ Validate against Tokelau/REopt, confirm site data, agree funding and O&M arrange
 def build_onepager(r):
     i, z, h = r.inputs, r.sizing, r.headroom
     return f"""# {i.site_name}: Our Solar Plan
-{"(Example numbers only)" if any("FAKE" in w for w in r.warnings) else ""}
 
 - New solar panels ({z.pv_kw:,.0f} kW) and a battery ({z.battery_kwh:,.0f} kWh).
 - About {pct(z.renewable_share_year1)} of our power comes from the sun.

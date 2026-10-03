@@ -4,17 +4,18 @@ William owns the energy model (`sunsafe/energy/`) and the lifecycle/finance mode
 (`sunsafe/lifecycle/`). Setup is in the [README](README.md). All assumptions are in
 `sunsafe/config.py`; anything marked TODO is a placeholder.
 
-**The model is frozen** (git tag `model-freeze-2026-10-03`): no changes to defaults or
-model logic. If a number looks wrong, raise it with William rather than editing
-`config.py`.
+The model freeze was lifted on 3 Oct 2026; git tag `model-freeze-2026-10-03` marks the
+frozen state. Changes to defaults or model logic still go through William, with a sourced
+reason. The fake model (`run_sunsafe_fake`) has been removed: `sunsafe/interface.py` now
+holds only the `Inputs`/`Results` definitions.
 
 ## App
 
 **Status:** the app uses the real model (`from sunsafe.model import run_sunsafe` in
-`app/components/layout.py`, commit `33b52f5`). If that import fails, it falls back to the
-fake and shows the error in the sidebar.
+`app/components/layout.py`). If the import or a run fails, the app shows the error in the
+sidebar and on Site Setup, and shows no results. There is no fallback to made-up numbers.
 
-**Every `Results` field is now real.** Nothing comes from `run_sunsafe_fake`.
+**Every `Results` field is real.**
 
 - **`sizing`:** the recommended design. This is the lowest 15-year-cost design that meets
   `renewable_target` in **every** year. It is not the cheapest design for year 1 only.
@@ -68,7 +69,7 @@ Now sourced:
 diesel-only is cheaper per kWh; that includes Apia retail 2026 (USD 1.17-1.93/L). Use a delivered price for the site, not a capital-city
 retail price.
 
-**Demo checklist.** These are app-side changes; the model stays frozen. Items were checked
+**Demo checklist.** These are app-side changes. Items were checked
 by running the real app headless (Streamlit AppTest) with the Fakaofo preset, the plain
 defaults, and an edge case (100% target, 5-year horizon). No page raised an error, and the
 numbers on screen match the model.

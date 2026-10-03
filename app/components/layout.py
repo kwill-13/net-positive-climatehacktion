@@ -1,4 +1,4 @@
-"""Shared UI helpers. The ONLY place the app touches the model contract (sunsafe.interface)."""
+"""Shared UI helpers. The ONLY place the app imports the model (sunsafe.model) and its contract (sunsafe.interface)."""
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # repo root -> `import sunsafe`
@@ -6,18 +6,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # repo root -> `im
 import streamlit as st
 from dataclasses import asdict
 
-from sunsafe.interface import Inputs, run_sunsafe_fake
+from sunsafe.interface import Inputs
 
 MODEL_IMPORT_ERROR = None
 try:
     from sunsafe.model import run_sunsafe
-except Exception as e:  # show the reason instead of silently using the fake model
+except Exception as e:  # show the reason in the sidebar; the app cannot run analyses
     MODEL_IMPORT_ERROR = repr(e)
-    from sunsafe.interface import run_sunsafe
+    run_sunsafe = None
 
 DEFAULTS = dict(site_name="Fakaofo (test)", lat=-9.38, lon=-171.24, diesel_lpd=200.0, price=2.70,
                 known_load=False, load_kwh=600.0, critical_kw=5.0, target=90, chem="lithium",
-                growth=3.0, years=15, results=None)
+                growth=3.0, years=15, results=None, model_error=None)
 CSS = """<style>
 .stApp{background:#faf9f6}
 .block-container{padding-top:2rem;max-width:1200px}
@@ -33,7 +33,7 @@ div[data-baseweb="input"],div[data-baseweb="input"] input,div[data-baseweb="sele
 .card small,.tag{color:#777;letter-spacing:.08em;text-transform:uppercase;font-size:.72rem;font-weight:600}
 .tag.inp{color:#7b6fb0}.tag.out{color:#1f6f66}
 .card h2{margin:2px 0 0;color:#1f6f66;font-size:1.8rem}
-.demo{background:#fff4d6;border:1px solid #e6c766;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:.88rem;color:#5a4a10}
+.notice{background:#fff4d6;border:1px solid #e6c766;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:.88rem;color:#5a4a10}
 .pills{margin:6px 0 14px}.pill{display:inline-block;padding:3px 12px;margin:0 6px 6px 0;border:1px solid #d6d2c7;border-radius:999px;font-size:.78rem;color:#777;background:#fff}
 .pill.on{background:#1f6f66;color:#fff;border-color:#1f6f66}
 .q{color:#555;font-size:1.02rem;margin:2px 0 14px}
@@ -51,23 +51,17 @@ def init(title, question=None, step=None):
     st.markdown(CSS, unsafe_allow_html=True)
     s = st.session_state
     r = s.results
-    fake = r is not None and any("FAKE" in w for w in r.warnings)
-    placeholders = r is not None and not fake and any("PLACEHOLDER" in w for w in r.warnings)
-    tag = ("● **DEMO MODE**" if fake else "● Model connected (placeholder inputs)" if placeholders
+    placeholders = r is not None and any("PLACEHOLDER" in w for w in r.warnings)
+    tag = ("● Model not loaded" if MODEL_IMPORT_ERROR else "● Model connected (placeholder inputs)" if placeholders
            else "● Model connected" if r else "● Ready")
     st.sidebar.markdown("### SUNSAFE\n" + tag)
     st.sidebar.caption(f"Results for: {r.inputs.site_name}" if r is not None else f"Current site: {s.site_name}")
-    if r is not None:
-        for w in r.warnings:
-            if "raised an error" in w:
-                st.sidebar.error(w)
+    if s.model_error:
+        st.sidebar.error(f"Last run failed: {s.model_error}")
     if MODEL_IMPORT_ERROR:
-        st.sidebar.error(f"Real model not loaded: {MODEL_IMPORT_ERROR}")
-    if fake:
-        st.markdown('<div class="demo">DEMO MODE — Illustrative data. Real model outputs are not connected yet.</div>',
-                    unsafe_allow_html=True)
-    elif placeholders:
-        st.markdown('<div class="demo">Real model connected. Some assumptions (load shape, PV and lead-acid capex, battery fade, demand growth) are still placeholders. See "Model notes and assumptions".</div>',
+        st.sidebar.error(f"Model not loaded: {MODEL_IMPORT_ERROR}")
+    if placeholders:
+        st.markdown('<div class="notice">Real model connected. Some assumptions (load shape, PV and lead-acid capex, battery fade, demand growth) are still placeholders. See "Model notes and assumptions".</div>',
                     unsafe_allow_html=True)
     if r is not None and step not in (None, 0) and build_inputs() != r.inputs:
         st.warning("Inputs changed since the last run. Go to Site Setup and re-run the analysis to update these results.")
@@ -101,14 +95,16 @@ def _run_cached(inputs_dict):
 
 
 def run_analysis():
-    """Call the model; never crash the UI. Falls back to the fake model on any error."""
-    inputs = build_inputs()
+    """Call the model; never crash the UI. Returns Results, or None (reason in session_state.model_error)."""
+    st.session_state.model_error = None
+    if run_sunsafe is None:
+        st.session_state.model_error = f"model not loaded ({MODEL_IMPORT_ERROR})"
+        return None
     try:
-        return _run_cached(asdict(inputs))
+        return _run_cached(asdict(build_inputs()))
     except Exception as e:
-        res = run_sunsafe_fake(inputs)
-        res.warnings.append(f"FAKE DATA: the model raised an error ({e!r}); showing the fake model instead.")
-        return res
+        st.session_state.model_error = repr(e)
+        return None
 
 
 def require_results():
@@ -116,10 +112,9 @@ def require_results():
     if r is None:
         st.info("Run the analysis first: go to **Site Setup** and click *Run SunSafe Analysis*.")
         st.stop()
-    notes = [w for w in r.warnings if "FAKE" not in w]
-    if notes:
-        with st.expander(f"Model notes and assumptions ({len(notes)})"):
-            for w in notes:
+    if r.warnings:
+        with st.expander(f"Model notes and assumptions ({len(r.warnings)})"):
+            for w in r.warnings:
                 st.markdown(f"- {w}")
     return r
 
