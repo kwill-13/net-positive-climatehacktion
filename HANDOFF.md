@@ -30,6 +30,34 @@ results = run_sunsafe(inputs)                   # same Inputs -> Results contrac
   electricity's share of the community's energy use.
 - **`warnings`:** the recommended strategy plus every placeholder still in use. Show them.
 
+**Placeholders still in use.** The numbers are real model outputs, but these inputs are
+not yet sourced. All are in `sunsafe/config.py`, marked TODO.
+- **Load:** generic 24-hour profile shape. When `daily_load_kwh` is not given, demand is
+  estimated from diesel use at 3.0 kWh/litre.
+- **Capital costs:** PV $2,500/kWp; batteries $600/kWh lithium, $350/kWh lead-acid.
+- **O&M:** PV $25/kWp/yr; battery $10/kWh/yr.
+- **Ageing:**
+  - Battery fade 2.5%/yr lithium, 6%/yr lead-acid
+  - Battery life 12 yrs lithium, 6 yrs lead-acid
+  - PV derate 0.5%/yr
+  - Battery price decline 4%/yr
+- **Fuel shock:** the 2026 path is the site's diesel price x1.00 for Jan-Mar and x1.35
+  for Apr-Jun.
+- **Headroom:**
+  - Candidate loads: freezer 8, school cooking 12, outboard charging 15 kWh/day.
+  - Non-electric energy: 3x electric load, with Fakaofo set at 1,800 kWh/day.
+- **Not counted:** generator capex/O&M and battery salvage value. Generator efficiency is
+  fixed at 3.0 kWh/litre.
+- **Weather:** if NASA POWER is unreachable, a synthetic tropical year is used and a
+  warning says so.
+
+**To switch the app to the real model,** change one import in
+`app/components/layout.py`:
+`from sunsafe.model import run_sunsafe`. Keep `Inputs` and `run_sunsafe_fake` imported
+from `sunsafe.interface`. After the switch:
+- No warning contains "FAKE", so the DEMO banner disappears.
+- `payback_years` can be `inf` and will display as "inf years".
+
 **Speed:** a call takes **~12 s**, because it compares about 9 strategies. Wrap it in
 `st.cache_data`. The first call for a new location also downloads its weather.
 
@@ -63,7 +91,8 @@ It works from any directory and takes ~40 s. It prints five sections:
 3. 15-year decline of the year-1 optimum vs the real 300 kWp / 1,350 kWh system.
 4. Strategy A (build big) vs B (moderate + planned replacement), with the recommended
    system's lifecycle curves.
-5. The decline in section 3 at battery fade rates 0.04 / 0.06 / 0.08.
+5. The real system's decline at battery fade 0.04 / 0.06 / 0.08, and the first year it
+   drops below 95% at each.
 
 Inputs are constants at the top of the script. Don't tune `config.py` to hit the Tokelau
 numbers: report the gap and source the assumptions instead (every `TODO` in `config.py`).
