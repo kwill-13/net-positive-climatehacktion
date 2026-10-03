@@ -18,7 +18,8 @@ from sunsafe.energy.backup import backup_hours
 from sunsafe.energy.diesel import litres_from_kwh
 from sunsafe.energy.simulate import battery_params, simulate
 from sunsafe.energy.solar import fetch_weather, pv_output_per_kw
-from sunsafe.interface import Finance, Headroom, Inputs, LifecycleYear, Results, Sizing
+from sunsafe.interface import (Finance, Headroom, Inputs, LifecycleYear, PlanStage, Results,
+                               Sizing)
 from sunsafe.lifecycle import finance as fin
 from sunsafe.lifecycle.projection import run_years
 from sunsafe.lifecycle.strategy import StrategyComparison, compare_strategies
@@ -50,10 +51,17 @@ def run_sunsafe(inputs: Inputs) -> Results:
     return results
 
 
-def run_sunsafe_detailed(inputs: Inputs):
+def run_sunsafe_detailed(inputs: Inputs, growth=None, rolling_stage_years=None):
     """
     Same as run_sunsafe, but also returns the StrategyComparison (all candidates and the
     year-1 cost-optimal design) for reports.
+
+    Args:
+        inputs: as run_sunsafe.
+        growth: optional override of inputs.demand_growth_per_year, e.g. a
+            degradation.GrowthSchedule (Inputs itself only carries a constant rate).
+        rolling_stage_years: stage lengths for strategy D; None = config.ROLLING_STAGE_YEARS,
+            () = leave D out (used by the Tokelau validation script to keep its published numbers).
 
     Returns:
         (Results, StrategyComparison)
@@ -62,7 +70,10 @@ def run_sunsafe_detailed(inputs: Inputs):
     chem = inputs.battery_chemistry
     price = inputs.diesel_price_per_litre
     years = inputs.project_years
-    growth = inputs.demand_growth_per_year
+    if growth is None:            # a degradation.GrowthSchedule may be passed by scripts
+        growth = inputs.demand_growth_per_year
+    if rolling_stage_years is None:
+        rolling_stage_years = config.ROLLING_STAGE_YEARS
 
     # ---- site: load and solar
     daily_kwh = inputs.daily_load_kwh
@@ -79,7 +90,8 @@ def run_sunsafe_detailed(inputs: Inputs):
 
     # ---- choose the design
     comp: StrategyComparison = compare_strategies(load_kw, pv_per_kw, inputs.renewable_target,
-                                                  chem, price, years, growth)
+                                                  chem, price, years, growth,
+                                                  rolling_stage_years=rolling_stage_years)
     rec = comp.recommended
     if not comp.any_feasible:
         warnings.append(f"No design kept {inputs.renewable_target:.0%} renewable in every year; "
@@ -118,7 +130,7 @@ def run_sunsafe_detailed(inputs: Inputs):
                if rec.replacement_year else 0.0)
     econ = fin.economics(rec.capex_usd, rec.om_by_year, [y.load_kwh for y in rec.years],
                          [y.gen_kwh for y in rec.years], price, rec.replacement_year,
-                         rec.replacement_usd)
+                         rec.replacement_usd, extra_costs=rec.extra_investments)
     if econ.payback_years == float("inf"):
         warnings.append("Generator savings do not cover O&M: the system never pays back.")
     finance = Finance(
@@ -152,6 +164,8 @@ def run_sunsafe_detailed(inputs: Inputs):
         backup_hours=round(backup_hours(rec.battery_kwh, chem, inputs.critical_load_kw), 1),
         headroom=headroom,
         warnings=warnings + [f"Recommended: {rec.name}."] + PLACEHOLDER_WARNINGS,
+        plan_stages=[PlanStage(st.year, round(st.pv_added_kw, 1), round(st.battery_installed_kwh, 1),
+                               round(st.capex_usd)) for st in rec.stages],
     )
     return results, comp
 

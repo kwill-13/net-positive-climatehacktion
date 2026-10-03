@@ -185,7 +185,9 @@ def _detailed(site, lat, lon, daily):
                     renewable_target=TARGET, battery_chemistry=CHEMISTRY,
                     project_years=FORWARD_YEARS,
                     demand_growth_per_year=config.DEMAND_GROWTH_PER_YEAR)
-    return run_sunsafe_detailed(inputs)
+    # Strategy D (rolling plan) is left out here so the validation numbers stay as published
+    # (A/B/C only); scripts/run_pacific_presets.py reports D.
+    return run_sunsafe_detailed(inputs, rolling_stage_years=())
 
 
 def _econ(design, price, rate=config.DISCOUNT_RATE, capex=None, replacement=None):

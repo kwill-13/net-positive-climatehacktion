@@ -6,7 +6,7 @@ one year's end state barely matters at an hourly 8760-step resolution).
 """
 
 from dataclasses import dataclass
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -36,7 +36,8 @@ def run_years(pv_kw: float, battery_kwh: float, load_kw: np.ndarray, pv_per_kw: 
               fade: Optional[float] = None,
               upgrade_in: Optional[int] = None,
               upgrade_pv_kw: Optional[float] = None,
-              upgrade_battery_kwh: Optional[float] = None) -> List[YearResult]:
+              upgrade_battery_kwh: Optional[float] = None,
+              stages: Optional[Sequence[Tuple[int, float, float]]] = None) -> List[YearResult]:
     """
     Simulate a fixed PV + battery design for `years` years.
 
@@ -55,20 +56,27 @@ def run_years(pv_kw: float, battery_kwh: float, load_kw: np.ndarray, pv_per_kw: 
             From that year the PV is `upgrade_pv_kw` (total kWp, existing + added) and a NEW
             battery of `upgrade_battery_kwh` nominal replaces the old one. All PV is derated by
             project year (conservative for the newer panels).
+        stages: several staged reinvestments (rolling plan): (year, total kWp from that year, new
+            battery kWh nominal installed at the start of that year), in year order. Same rules as
+            upgrade_in; upgrade_in is the one-stage case.
+        growth: a constant rate (0-1) or a degradation.GrowthSchedule.
 
     Returns:
         List of YearResult, one per year, in order.
     """
     if upgrade_in is not None and (upgrade_pv_kw is None or upgrade_battery_kwh is None):
         raise ValueError("upgrade_in needs upgrade_pv_kw and upgrade_battery_kwh")
+    staged = {y: (pv, b) for y, pv, b in (stages or [])}
+    if upgrade_in is not None:
+        staged[upgrade_in] = (upgrade_pv_kw, upgrade_battery_kwh)
     replacements = set(replace_battery_in or [])
     installed = 1
     out = []
     for year in range(1, years + 1):
         if year in replacements:
             installed = year
-        if upgrade_in is not None and year == upgrade_in:
-            pv_kw, battery_kwh, installed = upgrade_pv_kw, upgrade_battery_kwh, year
+        if year in staged:
+            (pv_kw, battery_kwh), installed = staged[year], year
         battery_year = year - installed + 1
         cap = battery_capacity(battery_year, battery_kwh, chemistry, fade)
         load_y = demand(year, load_kw, growth)

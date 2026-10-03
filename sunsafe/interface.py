@@ -74,6 +74,14 @@ class Headroom:
 
 
 @dataclass
+class PlanStage:
+    year: int                            # year of operation the investment is made (start of year)
+    pv_added_kw: float                   # kWp added in this stage (first stage: the initial build)
+    battery_installed_kwh: float         # new battery installed, kWh nominal (0 if none)
+    capex_usd: float                     # USD paid for this stage, in that year's real terms
+
+
+@dataclass
 class Results:
     inputs: Inputs
     sizing: Sizing
@@ -83,3 +91,7 @@ class Results:
     backup_hours: float                  # hours critical load stays powered, no fuel
     headroom: Headroom
     warnings: List[str] = field(default_factory=list)  # data gaps, assumptions
+    # Optional (added 4 Oct 2026; old callers unaffected): every investment in the recommended plan,
+    # in year order. The first stage is the initial build (= `sizing`); later ones are battery
+    # replacements or upgrades (staged expansion, rolling plan).
+    plan_stages: List[PlanStage] = field(default_factory=list)

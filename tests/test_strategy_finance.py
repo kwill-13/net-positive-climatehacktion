@@ -12,13 +12,13 @@ def test_recommended_meets_target_every_year(lead_acid_run):
     assert rec.npv_usd == min(c.npv_usd for c in feasible)
 
 
-def test_every_candidate_checked_with_its_replacement(lead_acid_run):
+def test_every_candidate_checked_with_its_reinvestments(lead_acid_run):
     _, _, comp = lead_acid_run
     for c in comp.candidates:
-        if c.replacement_year:
-            y = c.years[c.replacement_year - 1]
-            new_kwh = c.upgrade_battery_kwh if c.upgrade_battery_kwh is not None else c.battery_kwh
-            assert y.battery_year == 1 and y.battery_kwh == pytest.approx(new_kwh)
+        assert c.stages and c.stages[0].year == 1
+        for st in c.stages[1:]:                       # replacement, upgrade, or rolling stage
+            y = c.years[st.year - 1]
+            assert y.battery_year == 1 and y.battery_kwh == pytest.approx(st.battery_installed_kwh)
 
 
 def test_sinking_fund_covers_replacement_by_replacement_year(lead_acid_run):

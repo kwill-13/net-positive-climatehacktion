@@ -25,3 +25,20 @@ def test_compounding():
 def test_year_zero_rejected():
     with pytest.raises(ValueError):
         capacity_factor("lithium", 0)
+
+
+def test_growth_schedule_with_no_fast_years_equals_constant_growth():
+    from sunsafe.lifecycle.degradation import GrowthSchedule, growth_factor
+    sched = GrowthSchedule(fast_rate=0.20, fast_years=0, steady_rate=0.03)
+    base = np.ones(4)
+    for year in range(1, 26):
+        assert growth_factor(year, sched) == pytest.approx(growth_factor(year, 0.03))
+        np.testing.assert_allclose(demand(year, base, sched), demand(year, base, 0.03))
+
+
+def test_growth_schedule_fast_then_steady():
+    from sunsafe.lifecycle.degradation import GrowthSchedule, growth_factor
+    sched = GrowthSchedule(0.09, 5, 0.03)
+    assert growth_factor(1, sched) == 1.0
+    assert growth_factor(6, sched) == pytest.approx(1.09 ** 5)
+    assert growth_factor(10, sched) == pytest.approx(1.09 ** 5 * 1.03 ** 4)

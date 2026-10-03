@@ -188,6 +188,9 @@ PROJECT_DISCOUNT_RATE = DISCOUNT_RATE  # 0-1 per year, for 15-year NPV and the O
 BATTERY_PRICE_DECLINE_PER_YEAR = 0.04
 # Strategy B: battery replaced at the start of year N+1, for each N here (filtered to N+1 <= project years).
 STRATEGY_REPLACEMENT_AFTER_YEARS = range(5, 13)
+# Strategy D (rolling plan): stage lengths K to try, years. Each stage is sized to stay on target
+# to its own end; at each later stage PV is added and a new battery installed.
+ROLLING_STAGE_YEARS = (6, 8, 10)
 
 # ---------------------------------------------------------------- O&M -------
 
