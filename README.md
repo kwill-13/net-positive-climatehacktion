@@ -15,9 +15,9 @@ python3.11 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-pytest                             # ~35 tests, ~10 s, runs offline
-python scripts/run_tokelau.py      # validation against the real Tokelau system, ~15 s
-python -m sunsafe.model            # one demo site through the real run_sunsafe()
+pytest                             # ~50 tests, ~20 s, runs offline
+python scripts/run_tokelau.py      # validation against the real Tokelau system, ~40 s
+python -m sunsafe.model            # one demo site through the real run_sunsafe(), ~12 s
 ```
 
 The first run of `run_tokelau.py` (or `sunsafe.model`) downloads one year of hourly solar
@@ -40,8 +40,13 @@ See [HANDOFF.md](HANDOFF.md) for how to call the model from your part.
 | `sunsafe/energy/sizing.py` | Cheapest PV + battery meeting a renewable target | energy model (William) |
 | `sunsafe/energy/diesel.py` | Litres and cost from generator kWh | energy model (William) |
 | `sunsafe/energy/backup.py` | Hours a full battery carries the critical load | energy model (William) |
-| `sunsafe/model.py` | Real `run_sunsafe()`: energy parts real, others still fake | energy model (William) |
+| `sunsafe/energy/headroom.py` | Surplus solar by month, new loads that fit, electricity share | energy model (William) |
+| `sunsafe/hours.py` | Month index for 8760-hour arrays | energy model (William) |
+| `sunsafe/model.py` | Real `run_sunsafe()`: every Results field from the model | William |
 | `sunsafe/lifecycle/degradation.py` | Battery fade, PV derate, demand growth by year | lifecycle/finance (William) |
+| `sunsafe/lifecycle/projection.py` | `run_years()`: a design run forward year by year | lifecycle/finance (William) |
+| `sunsafe/lifecycle/strategy.py` | Build big vs moderate + planned replacement; recommendation | lifecycle/finance (William) |
+| `sunsafe/lifecycle/finance.py` | O&M, replacement, NPV, levelised cost, payback, fuel shock | lifecycle/finance (William) |
 | `sunsafe/load_profiles.py` | Placeholder village load profile | data/validation teammate (to replace) |
 | `scripts/run_tokelau.py` | Validation + sensitivity against Tokelau 2012 install | data/validation teammate |
 | app (Streamlit) | User interface, calls `run_sunsafe` | app teammate |
