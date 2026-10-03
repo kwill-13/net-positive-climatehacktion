@@ -12,7 +12,7 @@ Generator capex is excluded from both (the genset stays in both). No salvage val
 """
 
 from dataclasses import dataclass
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Union
 
 import numpy as np
 
@@ -58,7 +58,13 @@ def replacement_cost_usd(battery_kwh: float, chemistry: str, replacement_year: i
     return battery_kwh * price
 
 
-def lifetime_npv_usd(capex_usd: float, annual_om: float, gen_kwh_by_year: Sequence[float],
+def _om(annual_om: Union[float, Sequence[float]], year: int) -> float:
+    """O&M in a year of operation (1-based): a constant, or a per-year sequence."""
+    return annual_om if isinstance(annual_om, (int, float)) else annual_om[year - 1]
+
+
+def lifetime_npv_usd(capex_usd: float, annual_om: Union[float, Sequence[float]],
+                     gen_kwh_by_year: Sequence[float],
                      diesel_price: float, replacement_year: Optional[int] = None,
                      replacement_usd: float = 0.0,
                      rate: float = config.PROJECT_DISCOUNT_RATE) -> float:
@@ -67,7 +73,8 @@ def lifetime_npv_usd(capex_usd: float, annual_om: float, gen_kwh_by_year: Sequen
 
     Args:
         capex_usd: up-front cost, USD (t = 0).
-        annual_om: solar + battery O&M, USD/yr (end of each year).
+        annual_om: solar + battery O&M, USD/yr (end of each year); a constant, or one value
+            per year (e.g. higher after a staged upgrade).
         gen_kwh_by_year: generator output in years 1..P, kWh.
         diesel_price: USD/litre (constant real price).
         replacement_year: year the battery is replaced (start of year), or None.
@@ -79,7 +86,7 @@ def lifetime_npv_usd(capex_usd: float, annual_om: float, gen_kwh_by_year: Sequen
     """
     npv = capex_usd
     for year, gen_kwh in enumerate(gen_kwh_by_year, start=1):
-        npv += (annual_om + generator_cost_usd(gen_kwh, diesel_price)) * discount(year, rate)
+        npv += (_om(annual_om, year) + generator_cost_usd(gen_kwh, diesel_price)) * discount(year, rate)
     if replacement_year is not None:
         npv += replacement_usd * discount(replacement_year - 1, rate)
     return npv
@@ -172,7 +179,8 @@ class Economics:
     annual_saving_year1_usd: float   # generator fuel + O&M avoided in year 1, USD
 
 
-def economics(capex_usd: float, annual_om: float, load_kwh_by_year: Sequence[float],
+def economics(capex_usd: float, annual_om: Union[float, Sequence[float]],
+              load_kwh_by_year: Sequence[float],
               gen_kwh_by_year: Sequence[float], diesel_price: float,
               replacement_year: Optional[int] = None, replacement_usd: float = 0.0,
               rate: float = config.PROJECT_DISCOUNT_RATE) -> Economics:
@@ -181,11 +189,12 @@ def economics(capex_usd: float, annual_om: float, load_kwh_by_year: Sequence[flo
 
     Args:
         capex_usd: PV + battery up front, USD.
-        annual_om: solar + battery O&M, USD/yr.
+        annual_om: solar + battery O&M, USD/yr (constant or per year).
         load_kwh_by_year: demand in years 1..P, kWh (all served in both cases).
         gen_kwh_by_year: hybrid generator output in years 1..P, kWh.
         diesel_price: USD/litre.
-        replacement_year, replacement_usd: planned battery replacement, if any.
+        replacement_year, replacement_usd: planned battery replacement or staged upgrade, if any
+            (cost at the start of that year).
         rate: discount rate per year, 0-1.
 
     Returns:
@@ -201,6 +210,6 @@ def economics(capex_usd: float, annual_om: float, load_kwh_by_year: Sequence[flo
         npv_diesel_only_usd=npv_d,
         cost_per_kwh_hybrid_usd=levelised_cost_per_kwh(npv_h, load_kwh_by_year, rate),
         cost_per_kwh_diesel_usd=levelised_cost_per_kwh(npv_d, load_kwh_by_year, rate),
-        payback_years=simple_payback_years(capex_usd, saving, annual_om),
+        payback_years=simple_payback_years(capex_usd, saving, _om(annual_om, 1)),
         annual_saving_year1_usd=saving,
     )

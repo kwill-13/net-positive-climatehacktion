@@ -46,7 +46,7 @@ See [HANDOFF.md](HANDOFF.md) for how to call the model from your part, and
 | `sunsafe/model.py` | Real `run_sunsafe()`: every Results field from the model | William |
 | `sunsafe/lifecycle/degradation.py` | Battery fade, PV derate, demand growth by year | lifecycle/finance (William) |
 | `sunsafe/lifecycle/projection.py` | `run_years()`: a design run forward year by year | lifecycle/finance (William) |
-| `sunsafe/lifecycle/strategy.py` | Build big vs moderate + planned replacement; recommendation | lifecycle/finance (William) |
+| `sunsafe/lifecycle/strategy.py` | Build big vs planned battery replacement vs staged expansion; recommendation | lifecycle/finance (William) |
 | `sunsafe/lifecycle/finance.py` | O&M, replacement, NPV, levelised cost, payback, fuel shock | lifecycle/finance (William) |
 | `sunsafe/load_profiles.py` | Placeholder village load profile | data/validation teammate (to replace) |
 | `scripts/run_tokelau.py` | Validation + sensitivity against Tokelau 2012 install | data/validation teammate |

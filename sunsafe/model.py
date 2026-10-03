@@ -116,7 +116,7 @@ def run_sunsafe_detailed(inputs: Inputs):
     # ---- finance
     sinking = (fin.sinking_fund_deposit(rec.replacement_usd, rec.replacement_year - 1)
                if rec.replacement_year else 0.0)
-    econ = fin.economics(rec.capex_usd, rec.annual_om_usd, [y.load_kwh for y in rec.years],
+    econ = fin.economics(rec.capex_usd, rec.om_by_year, [y.load_kwh for y in rec.years],
                          [y.gen_kwh for y in rec.years], price, rec.replacement_year,
                          rec.replacement_usd)
     if econ.payback_years == float("inf"):

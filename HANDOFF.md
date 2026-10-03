@@ -17,15 +17,17 @@ sidebar and on Site Setup, and shows no results. There is no fallback to made-up
 
 **Every `Results` field is real.**
 
-- **`sizing`:** the recommended design. This is the lowest 15-year-cost design that meets
-  `renewable_target` in **every** year. It is not the cheapest design for year 1 only.
+- **`sizing`:** the recommended design's **first build**. This is the lowest 15-year-cost plan
+  that meets `renewable_target` in **every** year; it is not the cheapest design for year 1
+  only. If the plan is a staged expansion, the upgrade (year, added kWp, new battery kWh) is in
+  the `Recommended:` warning, which the app shows as a card.
 - **`lifecycle`:** one row per year.
-  - `share_funded_year_15`: the same system with its planned battery replacement.
-  - `share_funded_day_one`: the same system never replaced.
+  - `share_funded_year_15`: the plan as funded, with its battery replacement or staged upgrade.
+  - `share_funded_day_one`: the first build only, never replaced or upgraded.
   - `battery_capacity_kwh`: **usable** capacity with no replacement, as the
     `interface.py` comment says.
 - **`finance`:**
-  - `om_fund_per_year_usd`: O&M plus savings towards the battery replacement.
+  - `om_fund_per_year_usd`: O&M plus savings towards the battery replacement or upgrade.
   - The two levelised costs per kWh: hybrid and diesel-only.
   - `payback_years`: can be `inf` if diesel savings never cover O&M.
 - **`fuel_shock`:** **8 months**, 2026-03 to 2026-10. Each month gives the cost of
@@ -69,11 +71,11 @@ Now sourced:
 - **Discount rate:** 8%, with 6% as a sensitivity case.
 
 **Diesel price drives the result.**
-- **At the sourced default USD 1.87/L and 9% growth:** holding 95% every year needs 663 kWp /
-  2,664 kWh at Fakaofo. That costs $1.07/kWh vs $0.66/kWh for diesel-only (payback ~36 yrs).
-- **Breakeven:** USD 3.09/L (8%) or 2.74/L (6%).
-- **Why it is expensive:** demand triples over 15 years. Tokelau instead upgraded in stages (2012
-  build, 2020 upgrade), and SunSafe does not yet model staged expansion.
+- **At the sourced default USD 1.87/L and 9% growth:** the recommended staged expansion costs
+  $0.86/kWh vs $0.66/kWh for diesel-only, with a 14.2-yr payback.
+- **Breakeven:** USD 2.48/L (8%) or 2.27/L (6%).
+- **Staged expansion:** build for ~year 8, then upgrade, as Tokelau did in 2012 and 2020. It is
+  ~26% cheaper over 15 years than building big for year 15.
 - **For the pitch:** this is a price-risk case (see the fuel shock), not a guaranteed saving.
 
 **Demo checklist.** These are app-side changes. Items were checked
@@ -115,13 +117,17 @@ Housekeeping:
 
 **Reference numbers** for the Fakaofo demo: 600 kWh/day, lead-acid, 95% target,
 USD 1.87/L, 9%/yr growth (from `python scripts/run_tokelau.py`):
-- **Recommended:** 663 kWp / 2,664 kWh, with a new battery in year 13.
-- **Cost:** capex ~$2.59M; $1.07/kWh hybrid vs $0.66/kWh diesel-only; payback ~36 yrs;
-  breakeven diesel price $3.09/L (8%) or $2.74/L (6%).
-- **Strategy:** about 8% cheaper over 15 years than building big ($3.46M vs $3.76M NPV).
+- **Recommended:** C, staged expansion. Build 363 kWp / 1,612 kWh; in year 9 add 332 kWp and a
+  new 2,858 kWh battery.
+- **Cost:** capex ~$1.47M; $0.86/kWh hybrid vs $0.66/kWh diesel-only; payback 14.2 yrs;
+  breakeven diesel price $2.48/L (8%) or $2.27/L (6%).
+- **Strategy:** NPV $2.80M, vs $3.76M for building big (26% cheaper) and $3.46M for the best
+  same-size replacement.
 - **Validation:**
-  - Against Fakaofo's real system (IRENA 2013: 330 kWp / 3,379 kWh nominal): PV 2.0x, battery
-    0.79x.
+  - First build against Fakaofo's real system (IRENA 2013: 330 kWp / 3,379 kWh nominal): PV
+    1.10x, battery 0.48x.
+  - The year-9 upgrade (+332 kWp, ~2.9 MWh) resembles Tokelau's 2020 upgrade (+210 kWp,
+    ~2 MWh Li-ion).
   - The real system, modelled with 9% growth, drops below 95% in year 9. It was actually
     upgraded after ~8 yrs.
   - 2013 solar fraction: model 95-97% vs 92.5-93.5% measured.
@@ -155,7 +161,7 @@ It works from any directory and takes ~60 s. It prints five sections:
 1. Year-1 cost-optimal sizing vs the real 2012 install.
 2. Target x design-year table.
 3. 15-year decline of the year-1 optimum vs the real 300 kWp / 1,350 kWh system.
-4. Strategy A (build big) vs B (moderate + planned replacement), with the recommended
+4. Strategy A (build big) vs B (same-size battery replacement) vs C (staged expansion), with the recommended
    system's lifecycle curves.
 5. The real system's decline at battery fade 0.03 / 0.04 / 0.06 / 0.08, and the first year it
    drops below 95% at each.

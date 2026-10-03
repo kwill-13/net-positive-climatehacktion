@@ -17,7 +17,8 @@ def test_every_candidate_checked_with_its_replacement(lead_acid_run):
     for c in comp.candidates:
         if c.replacement_year:
             y = c.years[c.replacement_year - 1]
-            assert y.battery_year == 1 and y.battery_kwh == pytest.approx(c.battery_kwh)
+            new_kwh = c.upgrade_battery_kwh if c.upgrade_battery_kwh is not None else c.battery_kwh
+            assert y.battery_year == 1 and y.battery_kwh == pytest.approx(new_kwh)
 
 
 def test_sinking_fund_covers_replacement_by_replacement_year(lead_acid_run):
@@ -73,3 +74,25 @@ def test_economics_fixed_design():
     e2 = fin.economics(1000, 10, [300, 300], [30, 30], 4.0)
     assert (e2.cost_per_kwh_diesel_usd - e.cost_per_kwh_diesel_usd
             > e2.cost_per_kwh_hybrid_usd - e.cost_per_kwh_hybrid_usd)
+
+
+def test_staged_expansion_candidates_are_costed_and_checked(lead_acid_run):
+    inputs, _, comp = lead_acid_run
+    staged = [c for c in comp.candidates if c.name.startswith("C:")]
+    assert staged
+    for c in staged:
+        y = c.replacement_year
+        assert c.years[y - 2].pv_kw == pytest.approx(c.pv_kw)            # before the upgrade
+        assert c.years[y - 1].pv_kw == pytest.approx(c.upgrade_pv_kw)    # from the upgrade year
+        added_pv = (c.upgrade_pv_kw - c.pv_kw) * fin.config.PV_COST_USD_PER_KW
+        assert c.replacement_usd == pytest.approx(
+            added_pv + fin.replacement_cost_usd(c.upgrade_battery_kwh, inputs.battery_chemistry, y))
+        assert c.om_by_year[y - 1] == pytest.approx(fin.annual_om_usd(c.upgrade_pv_kw, c.upgrade_battery_kwh))
+        assert c.meets_target_every_year == (min(r.renewable_share for r in c.years)
+                                             >= inputs.renewable_target - 1e-9)
+
+
+def test_npv_accepts_om_by_year():
+    flat = fin.lifetime_npv_usd(0, 10, [0, 0], 1.0)
+    stepped = fin.lifetime_npv_usd(0, [10, 20], [0, 0], 1.0)
+    assert stepped - flat == pytest.approx(10 / 1.08 ** 2)

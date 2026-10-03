@@ -188,30 +188,34 @@ def _detailed(site, lat, lon, daily):
     return run_sunsafe_detailed(inputs)
 
 
-def _econ(design, price, rate=config.DISCOUNT_RATE, capex=None):
-    """Economics of a Strategy (fixed design) at a diesel price and discount rate (optional capex)."""
-    return fin.economics(design.capex_usd if capex is None else capex, design.annual_om_usd,
+def _econ(design, price, rate=config.DISCOUNT_RATE, capex=None, replacement=None):
+    """Economics of a Strategy (fixed design) at a diesel price and discount rate.
+
+    capex / replacement override the up-front and replacement/upgrade costs (e.g. high PV cost).
+    """
+    return fin.economics(design.capex_usd if capex is None else capex, design.om_by_year,
                          [y.load_kwh for y in design.years], [y.gen_kwh for y in design.years],
-                         price, design.replacement_year, design.replacement_usd, rate)
+                         price, design.replacement_year,
+                         design.replacement_usd if replacement is None else replacement, rate)
 
 
 def strategy_comparison(pv_per_kw):
     """Section 4: A vs B over the project, and the recommended system's lifecycle curves."""
-    _header(f"4. STRATEGY: build big vs moderate + planned replacement ({CHEMISTRY}, target "
+    _header(f"4. STRATEGY: A build big / B planned replacement / C staged expansion ({CHEMISTRY}, target "
             f"{TARGET:.0%} EVERY year, {FORWARD_YEARS} yrs, NPV at "
             f"{config.PROJECT_DISCOUNT_RATE:.0%})")
     for daily in DAILY_LOADS_KWH:
         res, comp = _detailed("Fakaofo", LAT, LON, daily)
         rec = comp.recommended
         print(f"\nDaily load {daily} kWh/day (year 1)")
-        print(f"  {'strategy':<24} {'PV kWp':>7} {'batt kWh':>8} {'replace':>7} "
+        print(f"  {'strategy (PV/batt = first build)':<58} {'PV kWp':>7} {'batt kWh':>8} {'year':>4} "
               f"{'15-yr NPV $':>12} {'O&M fund $/yr':>13} {'min share':>9} {'ok':>5}")
         for c in comp.candidates:
             sink = (fin.sinking_fund_deposit(c.replacement_usd, c.replacement_year - 1)
                     if c.replacement_year else 0.0)
             mark = "  <- recommended" if c is rec else ""
-            print(f"  {c.name:<24} {c.pv_kw:>7.0f} {c.battery_kwh:>8.0f} "
-                  f"{(c.replacement_year or '-'):>7} {c.npv_usd:>12,.0f} "
+            print(f"  {c.name:<58} {c.pv_kw:>7.0f} {c.battery_kwh:>8.0f} "
+                  f"{(c.replacement_year or '-'):>4} {c.npv_usd:>12,.0f} "
                   f"{c.annual_om_usd + sink:>13,.0f} {c.min_share:>9.1%} "
                   f"{str(c.meets_target_every_year):>5}{mark}")
         y1 = comp.year1_optimal
@@ -268,16 +272,20 @@ def price_sensitivity():
             pb = es[0].payback_years
             print(f"  {p:>6.2f} | " + " ".join(f"{v:>11.3f}" for v in vals)
                   + f" | {('never' if pb == float('inf') else f'{pb:.1f}'):>11}")
-        capex_high = rec.capex_usd + rec.pv_kw * (config.PV_COST_USD_PER_KW_HIGH - config.PV_COST_USD_PER_KW)
-        for capex, label in ((None, f"PV USD {config.PV_COST_USD_PER_KW:,.0f}/kW"),
-                             (capex_high, f"PV USD {config.PV_COST_USD_PER_KW_HIGH:,.0f}/kW (high case)")):
-          e = _econ(rec, DIESEL_PRICE, capex=capex)
+        d_pv = config.PV_COST_USD_PER_KW_HIGH - config.PV_COST_USD_PER_KW
+        capex_high = rec.capex_usd + rec.pv_kw * d_pv
+        repl_high = rec.replacement_usd + ((rec.upgrade_pv_kw - rec.pv_kw) * d_pv
+                                           if rec.upgrade_pv_kw is not None else 0.0)
+        for capex, repl, label in ((None, None, f"PV USD {config.PV_COST_USD_PER_KW:,.0f}/kW"),
+                                   (capex_high, repl_high,
+                                    f"PV USD {config.PV_COST_USD_PER_KW_HIGH:,.0f}/kW (high case)")):
+          e = _econ(rec, DIESEL_PRICE, capex=capex, replacement=repl)
           print(f"  {label}: capex ${capex if capex else rec.capex_usd:,.0f} | at USD {DIESEL_PRICE:.2f}/L "
                 f"hybrid ${e.cost_per_kwh_hybrid_usd:.3f}/kWh vs diesel ${e.cost_per_kwh_diesel_usd:.3f} | "
                 f"payback {_yrs(e.payback_years)}")
           for r in DISCOUNT_RATES:
             # Both levelised costs are linear in diesel price, so solve the crossing exactly.
-            lo, hi = _econ(rec, 1.0, r, capex), _econ(rec, 2.0, r, capex)
+            lo, hi = _econ(rec, 1.0, r, capex, repl), _econ(rec, 2.0, r, capex, repl)
             gap_lo = lo.cost_per_kwh_hybrid_usd - lo.cost_per_kwh_diesel_usd
             gap_hi = hi.cost_per_kwh_hybrid_usd - hi.cost_per_kwh_diesel_usd
             slope = gap_hi - gap_lo

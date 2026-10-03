@@ -265,8 +265,8 @@ Still missing:
    diesel-only is cheaper per kWh at the default (Part 1b, P1).
 4. **Measured performance stops in 2013.** There is no data on 2014-2020 decline.
 5. **Load growth:** 8-11%/yr implied for 2008-13, and 9%/yr reported by ITP; the model now
-   uses 9%. Holding the target every year at that growth needs a large up-front system, and
-   staged expansion is not modelled.
+   uses 9%. At that growth the cheapest plan is staged expansion (build, then upgrade in
+   ~year 9), which mirrors Tokelau's 2020 upgrade.
 6. **Demand level:** real 2013 demand was about 850-940 kWh/day (Atafu, Nukunonu), above
    the 600-720 kWh/day validation loads.
 
@@ -307,8 +307,11 @@ Found by reading IT Power (2013) and IRENA (2013), plus targeted searches.
 - **V1 (applied 2026-10-03). Battery comparison is not like for like.** The app's validation table and
   `run_tokelau.py` compare the model's *nominal* battery with Source A, which is
   effectively *usable*.
-  - With the 2026-10-03 assumptions (9% growth, 3% fade), the recommended system is 663 kWp /
-    2,664 kWh nominal. That is 2.0x Fakaofo's PV and 0.79x its battery.
+  - With the 2026-10-03 assumptions (9% growth, 3% fade, staged expansion), the recommended
+    first build is 363 kWp / 1,612 kWh nominal. That is 1.10x Fakaofo's PV and 0.48x its
+    battery.
+  - The recommended year-9 upgrade (+332 kWp, a new ~2.9 MWh battery) resembles the actual
+    2020 upgrade: +210 kWp and ~2 MWh of Li-ion per atoll (RNZ 2020).
   - Before the growth change (3%), it was 315 kWp / 1,481 kWh: 0.95x PV and 0.44x battery.
   - Now both the app table and `run_tokelau.py` compare nominal with nominal and usable with
     usable, per atoll.
