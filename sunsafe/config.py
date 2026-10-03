@@ -192,6 +192,39 @@ STRATEGY_REPLACEMENT_AFTER_YEARS = range(5, 13)
 # to its own end; at each later stage PV is added and a new battery installed.
 ROLLING_STAGE_YEARS = (6, 8, 10)
 
+# ------------------------------------------------------------ site presets ---
+
+# One list for scripts and the app. The Tokelau atolls use the validation settings
+# (scripts/run_tokelau.py). The other sites are ILLUSTRATIVE: real place coordinates, but the
+# diesel use (L/day), price and target are made up to span 200-600 L/day, NOT site data.
+# daily_load_kwh None = estimated from diesel use. Coordinates are approximate.
+SITE_PRESETS = [
+    dict(name="Fakaofo, Tokelau", lat=-9.38, lon=-171.24, diesel_litres_per_day=200,
+         daily_load_kwh=600.0, diesel_price=TOKELAU_DIESEL_PRICE_USD_PER_L, chemistry="lead_acid",
+         target=0.95, illustrative=False, note="validation site"),
+    dict(name="Nukunonu, Tokelau", lat=-9.17, lon=-171.85, diesel_litres_per_day=200,
+         daily_load_kwh=600.0, diesel_price=TOKELAU_DIESEL_PRICE_USD_PER_L, chemistry="lead_acid",
+         target=0.95, illustrative=False, note="validation site, approx. coordinates"),
+    dict(name="Atafu, Tokelau", lat=-8.54, lon=-172.50, diesel_litres_per_day=200,
+         daily_load_kwh=600.0, diesel_price=TOKELAU_DIESEL_PRICE_USD_PER_L, chemistry="lead_acid",
+         target=0.95, illustrative=False, note="validation site, approx. coordinates"),
+    dict(name="Abaiang, Kiribati", lat=1.83, lon=172.97, diesel_litres_per_day=300,
+         daily_load_kwh=None, diesel_price=TOKELAU_DIESEL_PRICE_USD_PER_L, chemistry="lithium",
+         target=0.95, illustrative=True, note="atoll near the equator"),
+    dict(name="Lifuka, Ha'apai, Tonga", lat=-19.80, lon=-174.35, diesel_litres_per_day=600,
+         daily_load_kwh=None, diesel_price=TOKELAU_DIESEL_PRICE_USD_PER_L, chemistry="lithium",
+         target=0.95, illustrative=True, note="Tongan outer island"),
+    dict(name="Tanna, Vanuatu", lat=-19.53, lon=169.27, diesel_litres_per_day=450,
+         daily_load_kwh=None, diesel_price=TOKELAU_DIESEL_PRICE_USD_PER_L, chemistry="lithium",
+         target=0.95, illustrative=True, note="high volcanic island"),
+    dict(name="Aitutaki, Cook Islands", lat=-18.86, lon=-159.79, diesel_litres_per_day=500,
+         daily_load_kwh=None, diesel_price=TOKELAU_DIESEL_PRICE_USD_PER_L, chemistry="lithium",
+         target=0.95, illustrative=True, note="Cook Islands outer island"),
+    dict(name="Jaluit, Marshall Islands", lat=5.92, lon=169.64, diesel_litres_per_day=250,
+         daily_load_kwh=None, diesel_price=TOKELAU_DIESEL_PRICE_USD_PER_L, chemistry="lithium",
+         target=0.95, illustrative=True, note="Marshall Islands atoll"),
+]
+
 # ---------------------------------------------------------------- O&M -------
 
 # USD per kWp per year. Sourced: ADB Nauru solar O&M USD 48/MWh [ADB-NRU] x ~1,490 kWh/kWp/yr
