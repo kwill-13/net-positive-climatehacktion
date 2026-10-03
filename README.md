@@ -41,7 +41,7 @@ See [HANDOFF.md](HANDOFF.md) for how to call the model from your part.
 | `sunsafe/energy/diesel.py` | Litres and cost from generator kWh | energy model (William) |
 | `sunsafe/energy/backup.py` | Hours a full battery carries the critical load | energy model (William) |
 | `sunsafe/model.py` | Real `run_sunsafe()`: energy parts real, others still fake | energy model (William) |
-| `sunsafe/lifecycle_placeholder.py` | TEMPORARY battery fade + demand growth | lifecycle teammate (to replace) |
+| `sunsafe/lifecycle/degradation.py` | Battery fade, PV derate, demand growth by year | lifecycle/finance (William) |
 | `sunsafe/load_profiles.py` | Placeholder village load profile | data/validation teammate (to replace) |
 | `scripts/run_tokelau.py` | Validation + sensitivity against Tokelau 2012 install | data/validation teammate |
 | app (Streamlit) | User interface, calls `run_sunsafe` | app teammate |

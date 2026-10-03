@@ -20,7 +20,7 @@ import numpy as np
 from sunsafe import config
 from sunsafe.energy.diesel import diesel_cost
 from sunsafe.energy.simulate import SimResult, battery_params, simulate
-from sunsafe.lifecycle_placeholder import capacity_factor, grown_load
+from sunsafe.lifecycle.degradation import capacity_factor, demand
 
 
 @dataclass
@@ -105,7 +105,7 @@ def size_system(load_kw: np.ndarray, pv_per_kw: np.ndarray, renewable_target: fl
     design_year = 1 sizes for a new battery and today's load. design_year = N sizes so the
     target is still met in year N with no battery replacement: battery performance uses
     nominal x (1 - annual_fade)^(N-1) and load is grown by (1 + demand_growth)^(N-1)
-    (placeholder helpers in sunsafe/lifecycle_placeholder.py). The objective uses diesel
+    (sunsafe/lifecycle/degradation.py). The objective uses diesel
     in the design year and capex of the installed (nominal) battery.
 
     Search range (config.SIZING_*): PV 0.5x-15x average design-year load (kW); battery 0-3
@@ -126,7 +126,7 @@ def size_system(load_kw: np.ndarray, pv_per_kw: np.ndarray, renewable_target: fl
         the highest renewable share and meets_target=False (callers should warn).
     """
     cap_factor = capacity_factor(chemistry, design_year)
-    load_kw = grown_load(load_kw, design_year, demand_growth)
+    load_kw = demand(design_year, load_kw, demand_growth)
     avg_kw = load_kw.mean()
     daily_kwh = load_kw.sum() / (len(load_kw) / 24)
     pv_lo = config.SIZING_PV_MIN_X_AVG_LOAD * avg_kw

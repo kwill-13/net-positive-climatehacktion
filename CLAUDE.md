@@ -7,6 +7,12 @@ work in year 15, and turns the plan into a funding case.
 
 - The default recommendation is the lowest 15-year-cost design that meets the renewable target every year, not the design-year-1 result.
 
+## Ownership
+
+- William: energy model (`sunsafe/energy/`) AND lifecycle/finance model (`sunsafe/lifecycle/`),
+  plus `sunsafe/config.py` and `sunsafe/model.py`.
+- Teammates: app (Streamlit), data/validation (load profiles, `scripts/run_tokelau.py`).
+
 ## Ground rules
 
 - `sunsafe/interface.py` is the model-app contract: do not rename or change its fields.

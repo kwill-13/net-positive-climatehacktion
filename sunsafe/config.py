@@ -51,7 +51,7 @@ BATTERY = {
 }
 
 # Capacity lost per year, compounding: capacity_y = nominal x (1 - fade)^(y - 1).
-# PLACEHOLDERS for design-year sizing; the lifecycle teammate owns the real fade model.
+# Used by sunsafe/lifecycle/degradation.py. PLACEHOLDERS until sourced.
 BATTERY_ANNUAL_FADE = {
     "lithium": 0.025,            # 0-1 per year. TODO: source
     "lead_acid": 0.06,           # 0-1 per year. TODO: source
@@ -60,6 +60,8 @@ BATTERY_ANNUAL_FADE = {
 # ------------------------------------------------------------------ demand ----
 
 DEMAND_GROWTH_PER_YEAR = 0.03    # 0-1 per year, compounding; same default as Inputs.demand_growth_per_year
+
+PV_ANNUAL_DERATE = 0.005         # 0-1 per year, compounding PV output loss. TODO: source
 
 # ----------------------------------------------------------------- diesel ----
 

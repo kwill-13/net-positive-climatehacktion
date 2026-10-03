@@ -9,7 +9,7 @@ Sections:
   1. Year-1 cost-optimal sizing at the base target.
   2. Sensitivity table: renewable target x design year (size for faded battery + grown load).
   3. 15-year forward run of the year-1 optimal system vs the real installed system.
-Fade and growth come from the TEMPORARY sunsafe/lifecycle_placeholder.py (placeholder rates).
+Fade and growth come from sunsafe/lifecycle/degradation.py (placeholder rates in config.py).
 Reference figures (per atoll):
   Source A: 265-365 kWp PV, 1.1-1.6 MWh nominal lead-acid.
   Source B: ~8 MWh lead-acid across three atolls, i.e. ~2.7 MWh per atoll.
@@ -25,7 +25,7 @@ from sunsafe.energy.backup import backup_hours  # noqa: E402
 from sunsafe.energy.simulate import simulate  # noqa: E402
 from sunsafe.energy.sizing import size_system  # noqa: E402
 from sunsafe.energy.solar import fetch_weather, pv_output_per_kw  # noqa: E402
-from sunsafe.lifecycle_placeholder import faded_capacity_kwh, grown_load  # noqa: E402
+from sunsafe.lifecycle.degradation import battery_capacity, demand  # noqa: E402
 from sunsafe.load_profiles import village_profile  # noqa: E402
 
 LAT, LON = -9.38, -171.24          # Fakaofo
@@ -101,10 +101,10 @@ def forward_run(pv_per_kw):
         print(f"{'year':>4} {'load kWh/d':>10} | {'opt batt kWh':>12} {'opt share':>9} | "
               f"{'real batt kWh':>13} {'real share':>10}")
         for year in range(1, FORWARD_YEARS + 1):
-            load_y = grown_load(load, year)
+            load_y = demand(year, load)
             row = []
             for pv_kw, batt_kwh in systems.values():
-                batt_y = faded_capacity_kwh(batt_kwh, CHEMISTRY, year)
+                batt_y = battery_capacity(year, batt_kwh, CHEMISTRY)
                 share = simulate(pv_kw, batt_y, load_y, pv_per_kw, CHEMISTRY).renewable_share
                 row.append((batt_y, share))
             (ob, os_), (rb, rs) = row
