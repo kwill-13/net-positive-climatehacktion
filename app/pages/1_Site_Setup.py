@@ -32,7 +32,7 @@ with R:
     s.growth = st.number_input("Demand growth (%/year)", value=float(s.growth), step=0.5)
     s.critical_kw = st.number_input("Critical load: clinic, comms (kW)", value=float(s.critical_kw), min_value=0.1)
     st.subheader("Open data")
-    st.info("Solar data and fuel prices: connected by the model team (see warnings after analysis).")
+    st.info("Solar: NASA POWER (synthetic fallback if unavailable). Fuel-price path and load shape: placeholders. See model notes after analysis.")
 
 if st.button("Run SunSafe Analysis", type="primary"):
     with st.status("Running SunSafe analysis...", expanded=True) as status:

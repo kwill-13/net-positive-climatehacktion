@@ -26,11 +26,18 @@ def init(title, question=None):
     st.markdown(CSS, unsafe_allow_html=True)
     s = st.session_state
     r = s.results
-    fake = r is None or any("FAKE" in w for w in r.warnings)
-    st.sidebar.markdown("### SUNSAFE\n" + ("● **DEMO MODE**" if fake else "● Model connected"))
+    fake = r is not None and any("FAKE" in w for w in r.warnings)
+    placeholders = r is not None and not fake and any("PLACEHOLDER" in w for w in r.warnings)
+    tag = ("● **DEMO MODE**" if fake else "● Model connected (placeholder inputs)" if placeholders
+           else "● Model connected" if r else "● Ready")
+    st.sidebar.markdown("### SUNSAFE\n" + tag)
     st.sidebar.caption(f"Current site: {s.site_name}")
     if fake:
         st.markdown('<div class="demo">DEMO MODE — Illustrative data. Real model outputs are not connected yet.</div>',
+                    unsafe_allow_html=True)
+    elif placeholders:
+        st.markdown('<div class="demo">Real model connected. Some assumptions (costs, battery fade, load shape, '
+                    'fuel path) are still placeholders. See "Model notes and assumptions".</div>',
                     unsafe_allow_html=True)
     st.title(title)
     if question:
@@ -67,7 +74,9 @@ def require_results():
     if r is None:
         st.info("Run the analysis first: go to **Site Setup** and click *Run SunSafe Analysis*.")
         st.stop()
-    for w in r.warnings:
-        if "FAKE" not in w:
-            st.caption(f"⚠ {w}")
+    notes = [w for w in r.warnings if "FAKE" not in w]
+    if notes:
+        with st.expander(f"Model notes and assumptions ({len(notes)})"):
+            for w in notes:
+                st.markdown(f"- {w}")
     return r

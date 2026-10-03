@@ -1,5 +1,5 @@
 """Markdown exports built from a sunsafe.interface.Results. Swap for PDF later."""
-from utils.formatting import money, pct, tco2
+from utils.formatting import money, pct, tco2, years
 
 
 def build_proposal(r):
@@ -23,7 +23,7 @@ Without battery replacement the renewable share falls to {pct(last.share_funded_
 funded for year 15 it holds at {pct(last.share_funded_year_15)}. O&M and replacement fund: {money(f.om_fund_per_year_usd)}/year.
 
 ## Financial case
-Capex {money(z.capex_usd)}. Cost per kWh: ${f.cost_per_kwh_hybrid_usd:.2f} hybrid vs ${f.cost_per_kwh_diesel_usd:.2f} diesel. Payback {f.payback_years:.1f} years.
+Capex {money(z.capex_usd)}. Cost per kWh: ${f.cost_per_kwh_hybrid_usd:.2f} hybrid vs ${f.cost_per_kwh_diesel_usd:.2f} diesel. Payback: {years(f.payback_years)}.
 
 ## Fuel-price risk and resilience
 See the fuel-shock replay in the app. Critical load backup: {r.backup_hours:,.0f} hours without fuel.
