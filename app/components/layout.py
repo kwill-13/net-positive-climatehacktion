@@ -4,7 +4,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # repo root -> `import sunsafe`
 
 import streamlit as st
-from sunsafe.interface import Inputs, run_sunsafe, run_sunsafe_fake
+from sunsafe.interface import Inputs, run_sunsafe_fake
+
+MODEL_IMPORT_ERROR = None
+try:
+    from sunsafe.model import run_sunsafe
+except Exception as e:  # show the reason instead of silently using the fake model
+    MODEL_IMPORT_ERROR = repr(e)
+    from sunsafe.interface import run_sunsafe
 
 DEFAULTS = dict(site_name="Fakaofo (test)", lat=-9.38, lon=-171.24, diesel_lpd=200.0, price=1.10,
                 known_load=False, load_kwh=600.0, critical_kw=5.0, target=90, chem="lithium",
@@ -48,6 +55,8 @@ def init(title, question=None, step=None):
            else "● Model connected" if r else "● Ready")
     st.sidebar.markdown("### SUNSAFE\n" + tag)
     st.sidebar.caption(f"Current site: {s.site_name}")
+    if MODEL_IMPORT_ERROR:
+        st.sidebar.error(f"Real model not loaded: {MODEL_IMPORT_ERROR}")
     if fake:
         st.markdown('<div class="demo">DEMO MODE — Illustrative data. Real model outputs are not connected yet.</div>',
                     unsafe_allow_html=True)
