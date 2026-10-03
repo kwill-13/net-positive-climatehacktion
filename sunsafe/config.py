@@ -91,3 +91,43 @@ SIZING_BATTERY_MAX_DAYS = 3.0         # battery kWh from 0 up to 3 days of daily
 SIZING_COARSE_STEPS_PV = 20           # coarse grid points for PV
 SIZING_COARSE_STEPS_BATTERY = 13      # coarse grid points for battery
 SIZING_REFINE_STEPS = 9               # points per axis in the refinement pass
+
+# ------------------------------------------------------ lifecycle strategy ---
+
+PROJECT_DISCOUNT_RATE = DISCOUNT_RATE  # 0-1 per year, for 15-year NPV and the O&M sinking fund
+BATTERY_PRICE_DECLINE_PER_YEAR = 0.04  # 0-1 per year, real; replacement price = today x (1-d)^t. TODO: source
+# Strategy B: battery replaced at the start of year N+1, for each N here (filtered to N+1 <= project years).
+STRATEGY_REPLACEMENT_AFTER_YEARS = range(5, 13)
+
+# ---------------------------------------------------------------- O&M -------
+
+OM_PV_USD_PER_KW_YEAR = 25.0          # USD per kWp per year (cleaning, inverter service). TODO: source
+OM_BATTERY_USD_PER_KWH_YEAR = 10.0    # USD per kWh nominal per year. TODO: source
+# Generator O&M is not counted in either the hybrid or the diesel-only case (same genset in both).
+
+# -------------------------------------------------------------- fuel shock ---
+# 2026 diesel price path as MULTIPLIERS of the site's input diesel price, so it works for any
+# site: flat Jan-Mar, then a ~35% jump from April (reported Pacific rises). TODO: source series.
+FUEL_SHOCK_2026 = [
+    ("2026-01", 1.00),
+    ("2026-02", 1.00),
+    ("2026-03", 1.00),
+    ("2026-04", 1.35),
+    ("2026-05", 1.35),
+    ("2026-06", 1.35),
+]
+
+# --------------------------------------------------------------- headroom ----
+# Candidate new electric loads that could use surplus solar: (description, kWh/day). TODO: source.
+CANDIDATE_NEW_LOADS = [
+    ("Community freezer", 8.0),
+    ("Electric cooking at the school", 12.0),
+    ("Charging for electric outboard motors", 15.0),
+]
+# Non-electric energy use (cooking fuel + outboard petrol), kWh/day thermal-equivalent.
+# Per-site values keyed by a lowercase substring of Inputs.site_name; otherwise
+# NON_ELECTRIC_TO_ELECTRIC_RATIO x daily electric load. ALL PLACEHOLDERS. TODO: source.
+SITE_NON_ELECTRIC_KWH_PER_DAY = {
+    "fakaofo": 1800.0,                # TODO: placeholder (3 x 600 kWh/day electric)
+}
+NON_ELECTRIC_TO_ELECTRIC_RATIO = 3.0  # TODO: placeholder (electricity ~25% of final energy)
