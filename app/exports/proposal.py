@@ -1,5 +1,20 @@
-"""Markdown exports built from a sunsafe.interface.Results plus the app's plan bundle. Swap for PDF later."""
+"""Exports built from a sunsafe.interface.Results plus the app's plan bundle.
+
+- Funding proposal: one self-contained HTML file with the same charts as the "Your plan" page
+  (Altair specs rendered by vega-embed from the jsDelivr CDN; print to PDF from a browser).
+- Community one-pager: Markdown.
+"""
+import html
+import json
+
+import altair as alt
+
+from components import charts
 from utils.formatting import money, pct, tco2, years
+
+_VEGA = getattr(alt, "VEGA_VERSION", "5").split(".")[0]
+_VEGALITE = getattr(alt, "VEGALITE_VERSION", "5")
+_EMBED = getattr(alt, "VEGAEMBED_VERSION", "6").split(".")[0]
 
 
 def _schedule(r):
@@ -9,7 +24,7 @@ def _schedule(r):
     for s in r.plan_stages[1:]:
         what = (f"add {s.pv_added_kw:,.0f} kWp solar and a new {s.battery_installed_kwh:,.0f} kWh {chem} battery"
                 if s.pv_added_kw > 0.5 else f"replace the battery ({s.battery_installed_kwh:,.0f} kWh {chem})")
-        lines.append(f"- Year {s.year}: {what}, about {money(s.capex_usd)}")
+        lines.append(f"Year {s.year}: {what}, about {money(s.capex_usd)}")
     return lines
 
 
@@ -20,67 +35,94 @@ def _breakeven(x, curve, plan):
     return "at no price up to $3.50/L" if curve[-1] > plan["cost_diesel"][-1] else "at every price from $1.00/L"
 
 
+def _chart(builder, plan, k):
+    chart, caption = builder(plan)
+    spec = chart.properties(width=680).to_json(indent=None).replace("</", "<\\/")
+    return (f'<figure><div id="chart{k}"></div><figcaption>{html.escape(caption)}</figcaption></figure>'
+            f'<script>vegaEmbed("#chart{k}", {spec}, {{actions: false, renderer: "svg"}});</script>')
+
+
+_CSS = """body{font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#2b2b2b;max-width:820px;
+margin:32px auto;padding:0 20px;line-height:1.5}h1{font-size:1.7rem;margin-bottom:4px}
+h2{font-size:1.15rem;margin-top:28px;border-bottom:1px solid #e0ddd5;padding-bottom:4px}
+.meta{color:#666}figure{margin:16px 0 24px}figcaption{color:#666;font-size:.85rem;margin-top:4px}
+table{border-collapse:collapse}td,th{border:1px solid #e0ddd5;padding:4px 10px;text-align:left}
+td.n{text-align:right}.note{background:#f4f8f4;border-left:4px solid #2e7d32;padding:8px 12px}
+@media print{figure{break-inside:avoid}}"""
+
+
 def build_proposal(r, plan):
+    """Funding proposal as one HTML document (string)."""
     i, z, f, h = r.inputs, r.sizing, r.finance, r.headroom
-    last = r.lifecycle[-1]
+    e = html.escape
     ap = plan["at_price"]
-    schedule = _schedule(r) or [f"- None needed: the first build holds the target through year {i.project_years}."]
+    sched = _schedule(r) or [f"None needed: the first build holds the target through year {i.project_years}."]
     saving = plan["saving_vs_a"]
-    return f"""# SunSafe Funding Proposal: {i.site_name}
+    k = iter(range(100))
+    chart = lambda b: _chart(b, plan, next(k))
+    return f"""<!doctype html><html><head><meta charset="utf-8"><title>SunSafe funding proposal: {e(i.site_name)}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/vega@{_VEGA}"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-lite@{_VEGALITE}"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-embed@{_EMBED}"></script>
+<style>{_CSS}</style></head><body>
+<h1>SunSafe funding proposal: {e(i.site_name)}</h1>
+<p class="meta">({i.latitude:.2f}, {i.longitude:.2f}) · {i.diesel_litres_per_day:,.0f} L/day diesel at
+${i.diesel_price_per_litre:.2f}/L delivered · target {pct(i.renewable_target)} renewable in every year ·
+{i.project_years} years · demand growth {e(plan['growth_label'])}</p>
+<p class="note">Planning estimate. SunSafe's engine is checked against Tokelau's measured performance;
+confirm site demand and diesel price before procurement.</p>
 
-## Project overview
-Diesel-to-solar mini-grid plan for {i.site_name} ({i.latitude:.2f}, {i.longitude:.2f}), planned to meet
-{pct(i.renewable_target)} renewable electricity in every year of a {i.project_years}-year project.
-Planning estimate: SunSafe's engine is checked against Tokelau's measured performance; site data should be
-confirmed before procurement.
+<h2>The plan</h2>
+<p>Build {z.pv_kw:,.0f} kWp solar and a {z.battery_kwh:,.0f} kWh {e(i.battery_chemistry.replace('_', '-'))}
+battery now (capex {money(z.capex_usd)}), then:</p>
+<ul>{''.join(f'<li>{e(s)}</li>' for s in sched)}</ul>
+<p>Strategy: {e(plan['rec_name'])}.{f" {saving:.0%} cheaper over the project than building big on day one." if saving and saving > 0.0005 else ""}</p>
+{chart(charts.investment_timeline)}
 
-## Current energy situation
-{i.diesel_litres_per_day:,.0f} L/day of diesel at ${i.diesel_price_per_litre:.2f}/L delivered.
-Demand growth assumed: {plan['growth_label']}.
+<h2>It still works in the final year</h2>
+{chart(charts.renewable_share)}
+{chart(charts.night_coverage)}
 
-## Build now
-{z.pv_kw:,.0f} kWp solar and {z.battery_kwh:,.0f} kWh {i.battery_chemistry.replace('_', '-')} battery,
-capex {money(z.capex_usd)}. Year-1 renewable share {pct(z.renewable_share_year1)}.
-
-## Upgrade schedule
-{chr(10).join(schedule)}
-
-Strategy: {plan['rec_name']}.{f" {saving:.0%} cheaper over the project than building big on day one." if saving and saving > 0.0005 else ""}
-Without reinvestment the renewable share falls to {pct(last.share_funded_day_one)} by year {last.year};
-with the schedule above it holds at {pct(last.share_funded_year_15)}.
-
-## Financial case
-| Cost per kWh at ${i.diesel_price_per_litre:.2f}/L | USD/kWh |
-|---|---:|
-| Diesel only | {ap['diesel']:.2f} |
-| Full hybrid cost (all capex) | {ap['full']:.2f} |
-| Island-paid, if donors fund the first build | {ap['island']:.2f} |
-
-Island-paid = O&M, later upgrades, and generator fuel and O&M. The hybrid beats diesel
+<h2>Who pays</h2>
+<table><tr><th>Cost per kWh at ${i.diesel_price_per_litre:.2f}/L</th><th>USD/kWh</th></tr>
+<tr><td>Diesel only</td><td class="n">{ap['diesel']:.2f}</td></tr>
+<tr><td>Full hybrid cost (all capex)</td><td class="n">{ap['full']:.2f}</td></tr>
+<tr><td>Island-paid, if donors fund the first build</td><td class="n">{ap['island']:.2f}</td></tr></table>
+<p>Island-paid = O&amp;M, later upgrades, and generator fuel and O&amp;M. The hybrid beats diesel
 {_breakeven(plan['breakeven_full'], plan['cost_full'], plan)} on full cost and
 {_breakeven(plan['breakeven_island'], plan['cost_island'], plan)} for the island.
-Set aside {money(f.om_fund_per_year_usd)}/year for O&M and the first upgrade. Simple payback: {years(f.payback_years)}.
+Set aside {money(f.om_fund_per_year_usd)}/year for O&amp;M and the first upgrade. Simple payback: {years(f.payback_years)}.</p>
+{chart(charts.cost_bars)}
+{chart(charts.fund_balance)}
 
-## Fuel-price risk and resilience
-See the fuel-shock replay in the app. Critical load backup: {r.backup_hours:,.0f} hours without fuel.
+<h2>Fuel-price risk and resilience</h2>
+{chart(charts.fuel_shock)}
+<p>Critical load backup: {r.backup_hours:,.0f} hours without fuel ({i.critical_load_kw:g} kW: clinic, radio).</p>
 
-## Electrification opportunities
-Electricity share of local energy use: {pct(h.electricity_share_before)} → {pct(h.electricity_share_after)}.
-Suggested new loads: {'; '.join(h.suggested_new_loads)}.
+<h2>Electrification opportunities</h2>
+<p>Electricity share of local energy use: {pct(h.electricity_share_before)} → {pct(h.electricity_share_after)}.
+Suggested new loads: {e('; '.join(h.suggested_new_loads))}.</p>
 
-## Expected impact
-{z.diesel_litres_avoided_year1:,.0f} L diesel avoided in year 1 (about {tco2(z.diesel_litres_avoided_year1):,.0f} tCO2e).
+<h2>Expected impact</h2>
+<p>{z.diesel_litres_avoided_year1:,.0f} L diesel avoided in year 1 (about {tco2(z.diesel_litres_avoided_year1):,.0f} tCO2e).</p>
 
-## Next steps
-Confirm site demand and delivered diesel price, agree who funds the first build and each upgrade, and set up the O&M fund.
-"""
+<h2>Alternatives we considered</h2>
+{chart(charts.strategy_npv)}
+{chart(charts.price_breakeven)}
+
+<h2>Next steps</h2>
+<p>Confirm site demand and delivered diesel price, agree who funds the first build and each upgrade, and set up
+the O&amp;M fund.</p>
+<p class="meta">Generated by SunSafe. Assumptions and sources: SOURCES.md in the project repository.</p>
+</body></html>"""
 
 
 def build_onepager(r, plan):
     i, z, h = r.inputs, r.sizing, r.headroom
     ap = plan["at_price"]
     schedule = _schedule(r)
-    upgrades = ("\n".join(f"  {line}" for line in schedule) if schedule
+    upgrades = ("\n".join(f"  - {line}" for line in schedule) if schedule
                 else "  - No upgrades needed during the project.")
     return f"""# {i.site_name}: Our Solar Plan
 

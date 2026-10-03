@@ -16,10 +16,13 @@ MODEL_IMPORT_ERROR = None
 try:
     from sunsafe.model import PLACEHOLDER_WARNINGS, run_sunsafe_detailed
     from sunsafe.lifecycle import finance as fin
+    from sunsafe.lifecycle import degradation as _deg      # read-only: pv_derate
+    from sunsafe.energy import solar as _solar              # read-only: cached weather -> PV yield
+    from sunsafe import load_profiles as _lp                # read-only: overnight share of demand
     from sunsafe.lifecycle.degradation import GrowthSchedule
 except Exception as e:  # show the reason in the sidebar; the app cannot run analyses
     MODEL_IMPORT_ERROR = repr(e)
-    run_sunsafe_detailed = fin = GrowthSchedule = None
+    run_sunsafe_detailed = fin = GrowthSchedule = _deg = _solar = _lp = None
     PLACEHOLDER_WARNINGS = []
 
 # Streamlit (including Streamlit Cloud after a git push) re-runs page scripts but keeps modules
@@ -297,6 +300,36 @@ def _run_cached(inputs_dict, growth):
                   demand=y.demand_kwh_per_day, pv_kw=y.pv_kw)
              for y, ly in zip(rec.years, results.lifecycle)]
 
+    # Night coverage: usable battery / overnight demand (18:00-06:00 share of the daily profile).
+    day = _lp.village_profile(1.0)[:24]
+    night_share = float(day[18:].sum() + day[:6].sum()) / float(day.sum())
+    # Solar output / demand: installed kWp x site yield (NASA weather, already cached) x PV derate.
+    yield_kwh_per_kwp = float(_solar.pv_output_per_kw(_solar.fetch_weather(inputs.latitude, inputs.longitude)).sum())
+    pv_without = results.plan_stages[0].pv_added_kw if results.plan_stages else rec.pv_kw
+    for row, y in zip(years, rec.years):
+        night = row["demand"] * night_share
+        row["night_plan"] = 100 * row["usable_plan"] / night
+        row["night_without"] = 100 * row["usable_without"] / night
+        solar = yield_kwh_per_kwp * _deg.pv_derate(y.year)
+        row["solar_plan"] = 100 * y.pv_kw * solar / y.load_kwh
+        row["solar_without"] = 100 * pv_without * solar / y.load_kwh
+
+    # Fund: the yearly set-aside = O&M (spent) + a deposit saved toward the first upgrade
+    # (finance.sinking_fund_deposit), earning the model's discount rate. The same deposit is assumed to
+    # continue after the first upgrade; later upgrades are compared with what has built up by then.
+    rate = config.PROJECT_DISCOUNT_RATE
+    deposit = (fin.sinking_fund_deposit(rec.replacement_usd, rec.replacement_year - 1)
+               if rec.replacement_year and rec.replacement_year > 1 else 0.0)
+    costs_by_year = {st_.year: st_.capex_usd for st_ in rec.stages[1:]}
+    balance, fund, upgrades = 0.0, [], []
+    for y in range(1, inputs.project_years + 1):
+        if y in costs_by_year:                      # paid at the start of the year
+            cost = costs_by_year[y]
+            upgrades.append(dict(year=y, cost=cost, available=balance, shortfall=max(cost - balance, 0.0)))
+            balance = max(balance - cost, 0.0)
+        balance = balance * (1 + rate) + deposit    # end of year: interest + deposit
+        fund.append(dict(year=y, balance=balance))
+
     # e. cost per kWh vs diesel price, the plan fixed (costs are linear in price: no re-sizing)
     loads = [y.load_kwh for y in rec.years]
     gens = [y.gen_kwh for y in rec.years]
@@ -318,7 +351,9 @@ def _run_cached(inputs_dict, growth):
                 upgrade_years=[st_.year for st_ in results.plan_stages[1:]],
                 prices=PRICE_GRID, cost_diesel=diesel, cost_full=full, cost_island=island,
                 breakeven_full=_crossing(PRICE_GRID, full, diesel),
-                breakeven_island=_crossing(PRICE_GRID, island, diesel), at_price=at_price)
+                breakeven_island=_crossing(PRICE_GRID, island, diesel), at_price=at_price,
+                night_share=night_share, fund=fund, fund_upgrades=upgrades, fund_deposit=deposit,
+                om_year1=rec.annual_om_usd, discount_rate=rate)
 
 
 def run_plan():
