@@ -16,8 +16,9 @@ work in year 15, and turns the plan into a funding case.
 
 ## Ground rules
 
-- The model freeze was lifted on 3 Oct 2026 (tag `model-freeze-2026-10-03` marks the frozen state).
-  Changes to defaults or model logic still go through William, with a sourced reason.
+- **MODEL FROZEN**, except: unfrozen 3-4 Oct for rolling plan + growth schedule; re-freeze after.
+  (Branch `rolling-plan`; tag `model-freeze-2026-10-03` marks the earlier frozen state.)
+  Any other change to defaults or model logic goes through William, with a sourced reason.
 - `sunsafe/interface.py` is the model-app contract (data definitions only): do not rename or
   change its fields. The implementation is `sunsafe.model.run_sunsafe`; there is no fake model.
 - All assumptions live in `sunsafe/config.py` with units; placeholders are marked TODO.
