@@ -31,17 +31,22 @@ work in year 15, and turns the plan into a funding case.
 ## App (`app/`)
 
 - Run from repo root: `streamlit run app/app.py`. Live link deployed on Streamlit Cloud.
-- Uses the real model: `from sunsafe.model import run_sunsafe` in `app/components/layout.py`.
-  If the import or a run fails, it shows the error (sidebar and Site Setup) and no results.
+- Three pages (planning flow, rebuilt 4 Oct): **Your island** (map click or lat/lon, Pacific presets from
+  `config.SITE_PRESETS`, main inputs, growth schedule, "Build my plan"), **Your plan** (decision cards,
+  year-by-year share, strategy NPVs, upgrade timing, cost per kWh vs diesel price incl. island-paid
+  cost, risks, exports), **How we know it works** (Tokelau validation, sensitivity, sources, placeholders).
+- Uses the real model: `run_sunsafe_detailed` in `app/components/layout.py` (one cached call per plan,
+  growth schedule passed as `growth=`). If the import or a run fails, it shows the error and no results.
 - Only `app/components/layout.py` imports the model. Pages read fields off `Results`.
-- Results are cached with `st.cache_data`; a new site fetches NASA POWER weather (~15 s).
+- Results are cached with `st.cache_data`; a new site fetches NASA POWER weather (~15 s). The price
+  curve (USD 1.00-3.50/L) reuses the one run: the plan is fixed and costs are linear in diesel price.
 - Default diesel price is USD 1.87/L (`config.TOKELAU_DIESEL_PRICE_USD_PER_L`): the Apia 2026 average,
   x1.25 freight to Tokelau (SOURCES.md P1). Scenarios: low 1.22 (2013 landed), high 2.70 (the old
   all-fuel derivation). Below USD 2.34/L (8%) or 2.11/L (6%), diesel-only is cheaper per kWh, and
   that includes the default.
-- Shows the recommended strategy (from the `Recommended:` warning), model notes, a stale-inputs warning,
-  and a Tokelau validation table for Fakaofo, Nukunonu and Atafu (comparison only, not a pass/fail
-  claim; warns when inputs differ from the validation case). Other sites show a "not validated" note.
+- Non-Pacific coordinates get a note that defaults (freight, growth) are set for Pacific islands. Sites
+  other than the Tokelau atolls link "Planning estimate. Engine checked against Tokelau's measured
+  performance" to page 3, which also compares a Tokelau-atoll plan with its real 2012 system.
 - Never put engineering calculations in the app. Only app-side conversion: diesel litres to tCO2e
   (2.68 kg CO2/L) in `app/utils/formatting.py`.
 

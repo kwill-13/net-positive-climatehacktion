@@ -12,9 +12,14 @@ holds only the `Inputs`/`Results` definitions.
 
 ## App
 
-**Status:** the app uses the real model (`from sunsafe.model import run_sunsafe` in
-`app/components/layout.py`). If the import or a run fails, the app shows the error in the
-sidebar and on Site Setup, and shows no results. There is no fallback to made-up numbers.
+**Status:** the app uses the real model (`run_sunsafe_detailed` in `app/components/layout.py`, one
+cached call per plan). If the import or a run fails, the app shows the error in the sidebar and on
+Your island, and shows no results. There is no fallback to made-up numbers.
+
+**Pages (rebuilt 4 Oct 2026 as a planning flow):** 1 Your island, 2 Your plan, 3 How we know it works.
+`layout.run_plan()` returns a bundle: `results`, best NPV per strategy family (A-D), per-year plan data,
+and cost per kWh vs diesel price (diesel only, full hybrid, island-paid "if donors fund the first build")
+with both breakevens. Exports take `(results, plan)`.
 
 **Every `Results` field is real.**
 
