@@ -9,7 +9,10 @@ Sections:
   1. Year-1 cost-optimal sizing at the base target.
   2. Sensitivity table: renewable target x design year (size for faded battery + grown load).
   3. 15-year forward run of the year-1 optimal system vs the real installed system.
-Fade and growth come from sunsafe/lifecycle/degradation.py (placeholder rates in config.py).
+  4. Strategy A (build big) vs B (moderate + planned replacement), and the recommended
+     system's two lifecycle curves (with vs without its planned replacement).
+  5. Section 3's 15-year decline rerun at several battery fade rates.
+Fade, PV derate and growth come from sunsafe/lifecycle/degradation.py (placeholders in config.py).
 Reference figures (per atoll):
   Source A: 265-365 kWp PV, 1.1-1.6 MWh nominal lead-acid.
   Source B: ~8 MWh lead-acid across three atolls, i.e. ~2.7 MWh per atoll.
@@ -22,10 +25,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sunsafe import config  # noqa: E402
 from sunsafe.energy.backup import backup_hours  # noqa: E402
-from sunsafe.energy.simulate import simulate  # noqa: E402
 from sunsafe.energy.sizing import size_system  # noqa: E402
 from sunsafe.energy.solar import fetch_weather, pv_output_per_kw  # noqa: E402
-from sunsafe.lifecycle.degradation import battery_capacity, demand  # noqa: E402
+from sunsafe.interface import Inputs  # noqa: E402
+from sunsafe.lifecycle import finance as fin  # noqa: E402
+from sunsafe.lifecycle.projection import run_years  # noqa: E402
+from sunsafe.model import run_sunsafe_detailed  # noqa: E402
 from sunsafe.load_profiles import village_profile  # noqa: E402
 
 LAT, LON = -9.38, -171.24          # Fakaofo
@@ -42,6 +47,8 @@ REAL_SYSTEM = (300.0, 1350.0)      # kWp, kWh nominal lead-acid: mid-range of So
 SENS_TARGETS = [0.95, 0.99, 1.0]
 SENS_DESIGN_YEARS = [1, 8, 15]
 FORWARD_YEARS = 15
+# Brief was cut off after "0.04, 0.06 and"; 0.08 is assumed. Edit freely.
+FADE_RATES = [0.04, 0.06, 0.08]
 
 
 def _vs(value, lo, hi=None):
@@ -100,16 +107,75 @@ def forward_run(pv_per_kw):
               f"{opt.pv_kw:.0f} kWp / {opt.battery_kwh:.0f} kWh")
         print(f"{'year':>4} {'load kWh/d':>10} | {'opt batt kWh':>12} {'opt share':>9} | "
               f"{'real batt kWh':>13} {'real share':>10}")
-        for year in range(1, FORWARD_YEARS + 1):
-            load_y = demand(year, load)
-            row = []
-            for pv_kw, batt_kwh in systems.values():
-                batt_y = battery_capacity(year, batt_kwh, CHEMISTRY)
-                share = simulate(pv_kw, batt_y, load_y, pv_per_kw, CHEMISTRY).renewable_share
-                row.append((batt_y, share))
-            (ob, os_), (rb, rs) = row
-            print(f"{year:>4} {load_y.sum() / 365:>10.0f} | {ob:>12.0f} {os_:>9.1%} | "
-                  f"{rb:>13.0f} {rs:>10.1%}")
+        opt_years, real_years = (run_years(pv, b, load, pv_per_kw, CHEMISTRY, FORWARD_YEARS)
+                                 for pv, b in systems.values())
+        for o, r in zip(opt_years, real_years):
+            print(f"{o.year:>4} {o.demand_kwh_per_day:>10.0f} | {o.battery_kwh:>12.0f} "
+                  f"{o.renewable_share:>9.1%} | {r.battery_kwh:>13.0f} {r.renewable_share:>10.1%}")
+    print("(includes PV derate; battery never replaced)\n")
+
+
+def _header(title):
+    print("=" * 100)
+    print(title)
+    print("=" * 100)
+
+
+def strategy_comparison(pv_per_kw):
+    """Section 4: A vs B over the project, and the recommended system's lifecycle curves."""
+    _header(f"4. STRATEGY: build big vs moderate + planned replacement ({CHEMISTRY}, target "
+            f"{TARGET:.0%} EVERY year, {FORWARD_YEARS} yrs, NPV at "
+            f"{config.PROJECT_DISCOUNT_RATE:.0%})")
+    for daily in DAILY_LOADS_KWH:
+        inputs = Inputs(site_name="Fakaofo", latitude=LAT, longitude=LON,
+                        diesel_litres_per_day=daily / config.DIESEL_KWH_PER_LITRE,
+                        diesel_price_per_litre=DIESEL_PRICE, daily_load_kwh=daily,
+                        renewable_target=TARGET, battery_chemistry=CHEMISTRY,
+                        project_years=FORWARD_YEARS)
+        res, comp = run_sunsafe_detailed(inputs)
+        rec = comp.recommended
+        print(f"\nDaily load {daily} kWh/day (year 1)")
+        print(f"  {'strategy':<24} {'PV kWp':>7} {'batt kWh':>8} {'replace':>7} "
+              f"{'15-yr NPV $':>12} {'O&M fund $/yr':>13} {'min share':>9} {'ok':>5}")
+        for c in comp.candidates:
+            sink = (fin.sinking_fund_deposit(c.replacement_usd, c.replacement_year - 1)
+                    if c.replacement_year else 0.0)
+            mark = "  <- recommended" if c is rec else ""
+            print(f"  {c.name:<24} {c.pv_kw:>7.0f} {c.battery_kwh:>8.0f} "
+                  f"{(c.replacement_year or '-'):>7} {c.npv_usd:>12,.0f} "
+                  f"{c.annual_om_usd + sink:>13,.0f} {c.min_share:>9.1%} "
+                  f"{str(c.meets_target_every_year):>5}{mark}")
+        y1 = comp.year1_optimal
+        print(f"  (report only) year-1 cost-optimal: {y1.pv_kw:.0f} kWp / {y1.battery_kwh:.0f} kWh")
+        f = res.finance
+        print(f"  Recommended: capex ${res.sizing.capex_usd:,.0f} | hybrid ${f.cost_per_kwh_hybrid_usd}"
+              f"/kWh vs diesel ${f.cost_per_kwh_diesel_usd}/kWh | payback {f.payback_years} yrs")
+        print(f"\n  Lifecycle curves for the recommended system ({rec.name}):")
+        print(f"  {'year':>4} {'demand kWh/d':>12} | {'with planned replacement':>24} | "
+              f"{'never replaced':>14} {'usable batt kWh':>15}")
+        for ly in res.lifecycle:
+            print(f"  {ly.year:>4} {ly.demand_kwh_per_day:>12.0f} | {ly.share_funded_year_15:>24.1%} | "
+                  f"{ly.share_funded_day_one:>14.1%} {ly.battery_capacity_kwh:>15.0f}")
+    print()
+
+
+def fade_sensitivity(pv_per_kw):
+    """Section 5: section 3's decline at several annual battery fade rates."""
+    _header(f"5. FADE SENSITIVITY: renewable share by year, no replacement ({CHEMISTRY}; "
+            f"fade rates {FADE_RATES}, config default {config.BATTERY_ANNUAL_FADE[CHEMISTRY]})")
+    for daily in DAILY_LOADS_KWH:
+        load = village_profile(daily)
+        opt = size_system(load, pv_per_kw, TARGET, CHEMISTRY, DIESEL_PRICE)
+        systems = {"opt": (opt.pv_kw, opt.battery_kwh), "real": REAL_SYSTEM}
+        runs = {(k, fade): run_years(pv, b, load, pv_per_kw, CHEMISTRY, FORWARD_YEARS, fade=fade)
+                for k, (pv, b) in systems.items() for fade in FADE_RATES}
+        print(f"\nDaily load {daily} kWh/day. opt = year-1 optimum {opt.pv_kw:.0f} kWp / "
+              f"{opt.battery_kwh:.0f} kWh; real = {REAL_SYSTEM[0]:.0f} kWp / {REAL_SYSTEM[1]:.0f} kWh")
+        cols = [f"{k} @{fade:.2f}" for k in systems for fade in FADE_RATES]
+        print(f"{'year':>4} | " + " ".join(f"{c:>10}" for c in cols))
+        for i in range(FORWARD_YEARS):
+            vals = [runs[(k, fade)][i].renewable_share for k in systems for fade in FADE_RATES]
+            print(f"{i + 1:>4} | " + " ".join(f"{v:>10.1%}" for v in vals))
     print()
 
 
@@ -142,6 +208,8 @@ def main():
 
     sensitivity_table(pv_per_kw)
     forward_run(pv_per_kw)
+    strategy_comparison(pv_per_kw)
+    fade_sensitivity(pv_per_kw)
 
 
 if __name__ == "__main__":
