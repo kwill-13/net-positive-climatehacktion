@@ -117,13 +117,20 @@ DIESEL_KWH_PER_LITRE = 3.0       # kWh electric per litre. Sourced: Maldives out
                                  # 0.28-0.37 L/kWh = 2.7-3.6 kWh/L [POISED]; ITP assumed 3 kWh/L for Tokelau
                                  # [ITP13 p.28]
 
-# Delivered diesel price for Tokelau, USD/litre. Derived, not quoted (SOURCES.md item 5):
-# ~200 L/day per atoll and NZD ~0.8-1M+/yr fuel [MAT][CT13] (SPC16 could not be checked) imply
-# NZD ~2.5-4.6/L = USD ~2.0-3.7/L at ~0.80 USD/NZD (2012); 2.70 sits inside that range.
-# REVIEW (SOURCES.md P1): that spend covers ALL fuel imports, so 2.70 is likely too high. Landed
-# diesel in 2013 was NZD 1.16-2.00+/L; ITP used NZD 1.50 [ITP13 pp.28-29]. Value unchanged pending decision.
-# Lower bound for remote islands: Apia retail 2026 USD 1.17 (Jan), 1.93 (Jun peak), 1.61 (Oct) [APIA].
-TOKELAU_DIESEL_PRICE_USD_PER_L = 2.70
+# Delivered diesel price for Tokelau (default), USD/litre. Derived from sources (SOURCES.md item 5, P1):
+#   mean Apia retail diesel Mar-Oct 2026 = 4.115 WST/L [APIA] x 0.3635 USD/WST [FX-WST] = USD 1.50/L,
+#   x 1.25 freight and handling to Tokelau (2013: landed NZD 1.50 vs Samoa wholesale NZD 1.20
+#   [ITP13 pp.28-29]) = USD 1.87/L. Using Apia retail (not wholesale) as the base makes this slightly high.
+#   tests/test_config.py checks this derivation against FUEL_SHOCK_APIA_WST_PER_L.
+TOKELAU_DIESEL_PRICE_USD_PER_L = 1.87
+TOKELAU_DIESEL_FREIGHT_MARKUP = 1.50 / 1.20   # landed / Samoa wholesale, 2013 [ITP13 pp.28-29]
+# Scenarios for reports:
+#   low  = 2013 landed price used by ITP, NZD 1.50/L x 0.81 = USD 1.22/L [ITP13][OFX]
+#   high = USD 2.70/L, the earlier derivation: NZD 0.8-1M+/yr fuel spend [MAT][CT13] / ~200 L/day per
+#          atoll. It overstates diesel because that spend covers ALL fuel imports (petrol, kerosene, LPG).
+TOKELAU_DIESEL_PRICE_LOW_USD_PER_L = 1.22
+TOKELAU_DIESEL_PRICE_HIGH_USD_PER_L = 2.70
+# Apia retail 2026 for reference: USD 1.17 (Jan), 1.93 (Jun peak), 1.61 (Oct) [APIA].
 NZD_TO_USD_2012 = 0.80           # USD per NZD, 2012. Sourced: 2012 average 0.810 [OFX]; 0.82 on
                                  # 23 Oct 2012 [IRENA13]
 

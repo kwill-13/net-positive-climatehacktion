@@ -2,6 +2,7 @@ import time
 import pandas as pd
 import streamlit as st
 from components.layout import init, run_analysis
+from sunsafe import config
 
 init("Site Setup", "What are we telling SunSafe? Fill in the four input groups, then run the analysis.", step=0)
 s = st.session_state
@@ -14,7 +15,7 @@ PRESETS = {"Fakaofo (validation site)": ("Fakaofo", -9.38, -171.24),
 def apply_preset():
     if s.preset in PRESETS:
         s.site_name, s.lat, s.lon = PRESETS[s.preset]
-        s.price, s.known_load, s.load_kwh, s.chem, s.target = 2.70, True, 600.0, "lead_acid", 95
+        s.price, s.known_load, s.load_kwh, s.chem, s.target = config.TOKELAU_DIESEL_PRICE_USD_PER_L, True, 600.0, "lead_acid", 95
 
 
 st.selectbox("Load a demo preset (Tokelau delivered diesel price, 600 kWh/day)", ["—"] + list(PRESETS),
@@ -33,7 +34,8 @@ with L:
         tag("Input · Current diesel")
         s.diesel_lpd = st.number_input("Diesel consumption (L/day)", value=float(s.diesel_lpd), min_value=0.0)
         s.price = st.number_input("Delivered diesel price (USD/L)", value=float(s.price), min_value=0.0,
-                              help="Default 2.70 = Tokelau delivered price (derived; see SOURCES.md). Apia retail 2026 was USD 1.17-1.93/L; below about USD 2.34/L diesel-only is cheaper per kWh.")
+                              help=(f"Default {config.TOKELAU_DIESEL_PRICE_USD_PER_L:.2f} = Tokelau delivered estimate (Apia 2026 average x freight; see SOURCES.md P1). "
+                                    f"Scenarios: low {config.TOKELAU_DIESEL_PRICE_LOW_USD_PER_L:.2f} (2013 landed), high {config.TOKELAU_DIESEL_PRICE_HIGH_USD_PER_L:.2f}."))
         s.known_load = st.checkbox("I know the daily electricity load", s.known_load)
         if s.known_load:
             s.load_kwh = st.number_input("Daily load (kWh/day)", value=float(s.load_kwh), min_value=1.0)

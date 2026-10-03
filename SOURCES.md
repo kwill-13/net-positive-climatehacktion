@@ -98,8 +98,9 @@ Off The Grid, TendersGo and delahyde.com are weaker. Where they overlap, cite th
   - Calls it an "$8.5 million solar power project".
   - Says New Zealand supported it "through an advance of $7 million".
 - **NZD 7M is New Zealand's advance; the full project cost was NZD 8.5M.**
-- `scripts/run_tokelau.py` section 7 reports the real system's payback at both costs: 10.9
-  years at NZD 7M and 13.3 years at NZD 8.5M, against the reported ~9.
+- `scripts/run_tokelau.py` section 7 reports the real systems' payback (IRENA sizes) at both
+  costs. At the default USD 1.87/L it is 19.5 yrs at NZD 7M and 23.7 yrs at NZD 8.5M, against
+  the reported ~9.
 
 ## 5. Tokelau delivered diesel price USD 2.70/L: Partly verified (derived, not quoted)
 
@@ -135,6 +136,13 @@ Dividing all-fuel spend by power-diesel volume overstates the diesel price.
 
 **USD 2.70/L is therefore likely too high.** The model's breakeven is USD 2.34/L, so this
 decides the economic result. See Part 1b, item P1.
+
+**Applied 2026-10-03: the default is now USD 1.87/L.**
+- Derivation: mean Apia retail Mar-Oct 2026 (4.115 WST/L) x 0.3635 = USD 1.50/L, x 1.25
+  freight and handling (ITP 2013: landed NZD 1.50 vs Samoa wholesale NZD 1.20).
+- Using Apia *retail* as the base makes this slightly high.
+- Scenarios: low USD 1.22 (2013 landed), high USD 2.70 (the old derivation).
+- `tests/test_config.py` checks the derivation.
 
 Further caveats:
 - USD/NZD 2012: the annual average was 0.810 (OFX), and IRENA (2013) gives USD 1 = NZD 1.22
@@ -249,14 +257,13 @@ Still missing:
 
 1. **Battery size:** resolved. Per atoll, nominal is 2.46-3.38 MWh and usable is
    1.23-1.69 MWh (IRENA 2013). Source A is usable capacity; Source B is the nominal total.
-   The current validation compares the model's *nominal* battery with Source A, which is
-   not like for like (Part 1b, V1).
+   Validation now compares nominal with nominal and usable with usable (Part 1b, V1).
 2. **Payback:** the ~9 years is reported without its method. The project cost was NZD 8.5M,
-   of which NZD 7M was New Zealand's advance. Modelled real-system payback is 10.9 years at
-   NZD 7M and 13.3 years at NZD 8.5M.
-3. **Diesel price:** USD 2.70/L divides all-fuel spend by diesel volume, so it is likely
-   too high. Landed diesel in 2013 was NZD 1.16-2.00+/L (IT Power 2013). This decides
-   whether solar beats diesel in the model (Part 1b, P1).
+   of which NZD 7M was New Zealand's advance. Modelled real-system payback at USD 1.87/L is
+   19.5 yrs at NZD 7M and 23.7 yrs at NZD 8.5M.
+3. **Diesel price:** the default is USD 1.87/L, derived from Apia 2026 prices plus freight.
+   It is not a quoted Tokelau price, and it sits below the model's 2.34 breakeven, so
+   diesel-only is cheaper per kWh at the default (Part 1b, P1).
 4. **Measured performance stops in 2013.** There is no data on 2014-2020 decline.
 5. **Load growth:** 8-11%/yr implied for 2008-13, and 9%/yr reported by ITP; the model's
    default is 3%/yr.
@@ -267,14 +274,16 @@ Still missing:
 
 # Part 1b: Evidence for placeholders, and validation fixes (2026-10-03)
 
-Found by reading IT Power (2013) and IRENA (2013), plus targeted searches. **Nothing here
-has been applied to `config.py` or the app yet.** Each row needs a decision from William.
+Found by reading IT Power (2013) and IRENA (2013), plus targeted searches.
+- **Applied 2026-10-03:** P1 (diesel price), V1 and V2 (validation fixes); P3, P4, P12 and
+  P13 citations.
+- **Still needs a decision from William:** every other row.
 
 ## Placeholders and unsourced values
 
 | ID | Item | Current | Evidence found | Suggestion |
 |---|---|---|---|---|
-| P1 | Diesel price (Tokelau) | USD 2.70/L | Landed 2013: NZD 1.16 / 1.52 / >2.00 per L; ITP used NZD 1.50 (IT Power 2013, pp. 28-29) = USD ~1.22. Apia retail 2026: USD 1.17-1.93. The 2.70 derivation divides all-fuel spend by diesel volume (item 5) | Re-derive. Use a sourced delivered price for 2026 (Apia retail plus freight) and keep 2.70 as a high scenario. **This decides solar vs diesel:** breakeven is USD 2.34/L |
+| P1 (**applied**: default now USD 1.87/L; scenarios 1.22 / 2.70) | Diesel price (Tokelau) | was USD 2.70/L | Landed 2013: NZD 1.16 / 1.52 / >2.00 per L; ITP used NZD 1.50 (IT Power 2013, pp. 28-29) = USD ~1.22. Apia retail 2026: USD 1.17-1.93. The 2.70 derivation divides all-fuel spend by diesel volume (item 5) | Re-derive. Use a sourced delivered price for 2026 (Apia retail plus freight) and keep 2.70 as a high scenario. **This decides solar vs diesel:** breakeven is USD 2.34/L |
 | P2 | PV capex | USD 2,500/kW (TODO) | Tokelau 2012 back-calculation: USD 6.95M total (IRENA 2013) minus ~USD 3.0-3.2M batteries (P3) over 891 kWp = **~USD 4,200-4,400/kWp** including inverters, BOS and install. Tokelau 2020 (RNZ): USD 2,500-3,300/kWp, depending on the Li-ion price assumed. Tuvalu 2024: USD 6M for 500 kW + 2 MWh (pv magazine), project-level. Global utility average: USD 691/kW (IRENA 2024) | Keep 2,500 as the low case and add ~4,000 as a remote-atoll high case. Mark sourced as a range |
 | P3 | Lead-acid capex | USD 350/kWh (TODO) | ITP's battery replacement estimate: NZD 3.75-4.0M (IT Power 2013, pp. 27, 32) for 8,602 kWh = NZD 436-465/kWh = **USD 353-377/kWh** (2013) | Keep 350 and mark it sourced |
 | P4 | Lead-acid life | 8 yrs (sourced) | ITP's tariff model also uses 8 yrs (IT Power 2013, p. 27). Replaced after ~8 yrs (RNZ 2020) | No change; add the citation |
@@ -290,16 +299,19 @@ has been applied to `config.py` or the app yet.** Each row needs a decision from
 
 ## Validation fixes
 
-- **V1. Battery comparison is not like for like.** The app's validation table and
+- **V1 (applied 2026-10-03). Battery comparison is not like for like.** The app's validation table and
   `run_tokelau.py` compare the model's *nominal* battery with Source A, which is
   effectively *usable*.
-  - Like-for-like, the recommended 1,481 kWh nominal (740 usable) is **about 0.44-0.60x** the
-    real system's nominal 2.46-3.38 MWh.
-  - PV (315 kWp) stays within the real 264-363 kWp range.
-- **V2. The "real system" in `run_tokelau.py` is too small.** It uses 300 kWp / 1,350 kWh
+  - Like-for-like, the recommended 1,481 kWh nominal (740 usable) is **0.44x** Fakaofo's
+    3,379 kWh nominal (1,690 usable).
+  - PV (315 kWp) is 0.95x Fakaofo's 330 kWp.
+  - Now both the app table and `run_tokelau.py` compare nominal with nominal and usable with
+    usable, per atoll.
+- **V2 (applied 2026-10-03). The "real system" in `run_tokelau.py` is too small.** It uses 300 kWp / 1,350 kWh
   nominal, which is Source A misread as nominal. The IRENA per-atoll sizes are, for example,
-  Fakaofo 330 kWp / 3,379 kWh nominal. Using them changes the outputs of sections 3, 5
-  and 7.
+  Fakaofo 330 kWp / 3,379 kWh nominal. With those sizes, the real system at 600 kWh/day and
+  3%/yr growth stays above 95% for 15 years at 4-8% fade. That differs from what actually
+  happened (inadequate by ~8 yrs), which points to the missing demand growth (P7, V3).
 - **V3. Validation loads.** 600/720 kWh/day sits within the 2008 measured range (553-699),
   but 2013 demand was ~850-940 kWh/day (Atafu, Nukunonu).
 - **V4. A new validation test is possible.** Simulate each real system (IRENA sizes) at its
@@ -308,8 +320,9 @@ has been applied to `config.py` or the app yet.** Each row needs a decision from
 - **V5. A payback cross-check.** ITP estimates a "saving of around NZD 15m through the
   reduction in diesel usage over the life of the project" (25 yrs, 2013 dollars,
   undiscounted; IT Power 2013, p. 35). That is ~NZD 0.6M/yr across three atolls, giving a
-  simple payback of ~14 yrs at NZD 8.5M or ~12 yrs at NZD 7M. This agrees with the model's
-  13.3 / 10.9 yrs, and sits above the ~9 yrs CleanTechnica reported.
+  simple payback of ~14 yrs at NZD 8.5M or ~12 yrs at NZD 7M, above the ~9 yrs CleanTechnica
+  reported. The model now gives 19.5-23.7 yrs at USD 1.87/L for the real systems; its O&M
+  for those large banks (P11) is a likely reason it is longer.
 
 ---
 

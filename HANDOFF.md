@@ -52,7 +52,8 @@ Still placeholders (TODO):
 
 Now sourced:
 - **Diesel:**
-  - Tokelau price USD 2.70/L; Apia retail 2026 (USD 1.17-1.93) is a lower bound.
+  - Tokelau delivered price USD 1.87/L (Apia 2026 average x1.25 freight, ITP 2013); scenarios:
+    low 1.22, high 2.70.
   - Generator efficiency 3.0 kWh/L.
   - Generator O&M USD 0.04/kWh, applied to both diesel-only and hybrid generator output.
 - **Fuel shock:** Apia monthly retail diesel, Mar-Oct 2026, as changes relative to March,
@@ -64,11 +65,13 @@ Now sourced:
 - **O&M:** PV $70/kW/yr; battery $10/kWh/yr.
 - **Discount rate:** 8%, with 6% as a sensitivity case.
 
-**Diesel price drives the result, and USD 2.70/L is under review** (`SOURCES.md` P1: it likely
-overstates the delivered price). At Tokelau's USD 2.70/L the hybrid beats diesel-only
-($0.82 vs $0.94 per kWh, payback 7.7 yrs). Below USD 2.34/L at 8%, or 2.11/L at 6%,
-diesel-only is cheaper per kWh; that includes Apia retail 2026 (USD 1.17-1.93/L). Use a delivered price for the site, not a capital-city
-retail price.
+**Diesel price drives the result.**
+- **At the sourced default USD 1.87/L:** the hybrid costs $0.82/kWh vs $0.66/kWh for diesel-only,
+  so diesel-only is cheaper per kWh. The hybrid still pays back in 12.1 yrs and holds the
+  renewable target.
+- **Breakeven:** the hybrid wins above USD 2.34/L (8%) or 2.11/L (6%), e.g. at the 2.70 high
+  scenario ($0.82 vs $0.94, payback 7.7 yrs).
+- **For the pitch:** this is a price-risk case (see the fuel shock), not a guaranteed saving.
 
 **Demo checklist.** These are app-side changes. Items were checked
 by running the real app headless (Streamlit AppTest) with the Fakaofo preset, the plain
@@ -76,7 +79,7 @@ defaults, and an edge case (100% target, 5-year horizon). No page raised an erro
 numbers on screen match the model.
 
 Done:
-- [x] Default diesel price 2.70, plus a Tokelau preset.
+- [x] Default diesel price comes from config (USD 1.87, sourced), plus a Tokelau preset.
 - [x] Results cached with `st.cache_data`.
 - [x] `payback_years = inf` shows as "Never (savings don't cover O&M)".
 - [x] Streamlit version: `requirements.txt` now says `streamlit>=1.39`. Site Setup
@@ -86,7 +89,8 @@ Re-checked after commit `eacc610`, on Streamlit 1.65 and 1.39, in 4 scenarios in
 "inputs edited without re-running". No page raised an error.
 - [x] Recommended strategy shown as a card on System Design and Lifecycle, and in the proposal.
 - [x] Out-of-date banner text fixed.
-- [x] Validation table on System Design: 315 kWp / 1,481 kWh is "Within range" for both.
+- [x] Validation table on System Design compares each atoll's real IRENA sizes, nominal vs nominal and
+  usable vs usable. Fakaofo: PV 0.95x, battery 0.44x.
 - [x] Model errors shown in the sidebar with the reason.
 - [x] Sidebar shows "Results for: <site>", and pages warn when inputs changed since the run.
 - [x] Final-year share card, plus a caption explaining the ~100% year-1 share.
@@ -107,14 +111,13 @@ Housekeeping:
   only, or use `git` from the command line.
 
 **Reference numbers** for the Fakaofo demo: 600 kWh/day, lead-acid, 95% target,
-USD 2.70/L (from `python scripts/run_tokelau.py`):
+USD 1.87/L (from `python scripts/run_tokelau.py`):
 - **Recommended:** 315 kWp / 1,481 kWh, with a new battery in year 10.
-- **Cost:** capex ~$1.31M; payback ~7.7 yrs; breakeven diesel price $2.34/L (8%) or
-  $2.11/L (6%).
-- **Strategy:** about 13% cheaper over 15 years than building big ($1.83M vs $2.11M NPV).
-- **Validation:** inside the real 2012 install's range per Source A (265-365 kWp, 1.1-1.6 MWh
-  per atoll). The battery is about 0.56x Source B (over 8 MWh total, ~2.7 MWh per atoll). Both
-  sources are quoted in `SOURCES.md`.
+- **Cost:** capex ~$1.31M; $0.82/kWh hybrid vs $0.66/kWh diesel-only; payback 12.1 yrs;
+  breakeven diesel price $2.34/L (8%) or $2.11/L (6%).
+- **Strategy:** about 13.5% cheaper over 15 years than building big ($1.82M vs $2.10M NPV).
+- **Validation** vs Fakaofo's real system (IRENA 2013: 330 kWp / 3,379 kWh nominal): PV 0.95x,
+  battery 0.44x, both nominal and usable. Sources are in `SOURCES.md`.
 
 For a strategy comparison screen, `run_sunsafe_detailed(inputs)` returns
 `(results, comparison)`:

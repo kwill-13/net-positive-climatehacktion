@@ -6,6 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # repo root -> `im
 import streamlit as st
 from dataclasses import asdict
 
+from sunsafe import config
 from sunsafe.interface import Inputs
 
 MODEL_IMPORT_ERROR = None
@@ -15,7 +16,7 @@ except Exception as e:  # show the reason in the sidebar; the app cannot run ana
     MODEL_IMPORT_ERROR = repr(e)
     run_sunsafe = None
 
-DEFAULTS = dict(site_name="Fakaofo (test)", lat=-9.38, lon=-171.24, diesel_lpd=200.0, price=2.70,
+DEFAULTS = dict(site_name="Fakaofo (test)", lat=-9.38, lon=-171.24, diesel_lpd=200.0, price=config.TOKELAU_DIESEL_PRICE_USD_PER_L,
                 known_load=False, load_kwh=600.0, critical_kw=5.0, target=90, chem="lithium",
                 growth=3.0, years=15, results=None, model_error=None)
 CSS = """<style>

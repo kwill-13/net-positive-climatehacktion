@@ -34,30 +34,36 @@ work in year 15, and turns the plan into a funding case.
   If the import or a run fails, it shows the error (sidebar and Site Setup) and no results.
 - Only `app/components/layout.py` imports the model. Pages read fields off `Results`.
 - Results are cached with `st.cache_data`; a new site fetches NASA POWER weather (~15 s).
-- Default diesel price is USD 2.70/L (Tokelau delivered price, derived; see SOURCES.md item 5).
-  UNDER REVIEW (SOURCES.md P1): likely too high; 2013 landed diesel was NZD 1.16-2.00+/L.
-  Below USD 2.34/L (8%) or 2.11/L (6%) diesel-only is cheaper per kWh. Apia retail 2026
-  (USD 1.17-1.93/L) is a lower bound, not a site price.
+- Default diesel price is USD 1.87/L (`config.TOKELAU_DIESEL_PRICE_USD_PER_L`): the Apia 2026 average,
+  x1.25 freight to Tokelau (SOURCES.md P1). Scenarios: low 1.22 (2013 landed), high 2.70 (the old
+  all-fuel derivation). Below USD 2.34/L (8%) or 2.11/L (6%), diesel-only is cheaper per kWh, and
+  that includes the default.
 - Shows the recommended strategy (from the `Recommended:` warning), model notes, a stale-inputs warning,
   and a Tokelau validation table for Fakaofo, Nukunonu and Atafu (comparison only, not a pass/fail
   claim; warns when inputs differ from the validation case). Other sites show a "not validated" note.
 - Never put engineering calculations in the app. Only app-side conversion: diesel litres to tCO2e
   (2.68 kg CO2/L) in `app/utils/formatting.py`.
 
-## Reference run (Fakaofo, 600 kWh/day, lead-acid, 95%, USD 2.70/L)
+## Reference run (Fakaofo, 600 kWh/day, lead-acid, 95%, USD 1.87/L)
 
-Recommended: 315 kWp / 1,481 kWh, planned battery replacement in year 10; capex ~USD 1.31M
-(placeholder costs); payback ~7.7 yrs vs ~9 reported; ~13% cheaper over 15 years than building big.
-Year-1 optimum (184 kWp / 750 kWh) undersizes against the real 2012 install (Source A: 265-365 kWp,
-1.1-1.6 MWh per atoll; Source B: over 8 MWh total, ~2.7 MWh per atoll). Recommended battery is
-within Source A, about 0.56x Source B. Real-system payback: 10.9 yrs at NZD 7M (NZ advance),
-13.3 yrs at NZD 8.5M (total). All reference figures are quoted in `SOURCES.md`.
+- **Recommended:** 315 kWp / 1,481 kWh, with a planned battery replacement in year 10; capex ~USD 1.31M
+  (placeholder costs).
+- **Strategy:** NPV USD 1.82M vs 2.10M for building big (~13.5% cheaper).
+- **Cost per kWh:** at USD 1.87/L the hybrid costs $0.82/kWh vs $0.66/kWh diesel-only, so diesel-only
+  is cheaper per kWh (breakeven USD 2.34/L). Simple payback is 12.1 yrs.
+- **Validation** (real 2012 systems, IRENA 2013; nominal vs nominal):
+  - PV 315 kWp vs Fakaofo's 330 (0.95x).
+  - Battery 1,481 kWh vs 3,379 kWh nominal (0.44x); usable 740 vs 1,690 kWh (0.44x).
+  - The year-1 optimum (184 kWp / 750 kWh) undersizes further.
+- **Real-system payback** at USD 1.87/L: 19.5 yrs (NZD 7M) / 23.7 yrs (NZD 8.5M) vs ~9 reported.
+  Config O&M may be overstated (SOURCES.md P11). All reference figures are in `SOURCES.md`.
 
 ## Known limitations (state these in any write-up)
 
 - Placeholders: load shape, capital costs, battery fade, demand growth, headroom loads.
-- The two battery reference sources differ by about 2x.
-- Model capex is lower than the real project's; modelled real-system payback is 10.9-13.3 yrs vs ~9 reported.
+- The battery references are reconciled (nominal 2.46-3.38 MWh per atoll; ITP's 1.1-1.6 MWh is the usable half).
+- The model's battery is ~0.44x the real one (nominal vs nominal); PV matches.
+- Modelled real-system payback is 19.5-23.7 yrs at USD 1.87/L vs ~9 reported (method unknown; config O&M may be high).
 - Historical load growth was reported as 9%/yr (ITP 2019); the model uses a 3%/yr placeholder.
 - Results depend heavily on delivered diesel price.
 - Interface gaps: no fuel-shock slider function, no per-load backup hours, no kWh/day per new use.

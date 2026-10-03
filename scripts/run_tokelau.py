@@ -16,10 +16,11 @@ Sections:
   6. Diesel price x discount rate: hybrid vs diesel-only USD/kWh, payback, breakeven price.
   7. Payback for all three atolls vs Tokelau's reported ~9-year simple payback.
 Fade, PV derate and growth come from sunsafe/lifecycle/degradation.py (placeholders in config.py).
-Reference figures (per atoll):
-  Source A: 265-365 kWp PV, 1.1-1.6 MWh nominal lead-acid (ITP / One Step Off The Grid 2019).
-  Source B: over 8 MWh lead-acid across three atolls, i.e. ~2.7 MWh per atoll (ITP Projects page).
-  Both are quoted in SOURCES.md items 1-2.
+Reference figures (real 2012 systems, per atoll; SOURCES.md items 1-2):
+  IRENA (2013) Table 2: Fakaofo 330 kWp / 3,379 kWh, Atafu 297 / 2,765, Nukunonu 264 / 2,458
+  (battery = nominal, C20 Ah x 48 V; 8.6 MWh in total = ITP's "over 8 MWh", Source B).
+  Usable = 50% of nominal (lead-acid design depth of discharge) = 1.2-1.7 MWh, which matches
+  ITP's "1.1-1.6 MWh" (Source A). Batteries are compared nominal-to-nominal and usable-to-usable.
 """
 
 import sys
@@ -42,19 +43,24 @@ LAT, LON = -9.38, -171.24          # Fakaofo
 CHEMISTRY = "lead_acid"
 TARGET = 0.95
 DAILY_LOADS_KWH = [600, 720]
-DIESEL_PRICE = config.TOKELAU_DIESEL_PRICE_USD_PER_L   # USD/litre, sourced (see config.py)
+DIESEL_PRICE = config.TOKELAU_DIESEL_PRICE_USD_PER_L   # USD/litre, sourced delivered estimate (config.py)
 
-REAL_PV_KW = (265, 365)
-SOURCE_A_BATT_KWH = (1100, 1600)
-SOURCE_B_BATT_KWH = 8000 / 3
-REAL_SYSTEM = (300.0, 1350.0)      # kWp, kWh nominal lead-acid: mid-range of Source A
+# Real 2012 systems [IRENA13 Table 2]: kWp, kWh nominal (C20 Ah x 48 V).
+REAL_SYSTEMS = {"Fakaofo": (330.0, 3379.0), "Atafu": (297.0, 2765.0), "Nukunonu": (264.0, 2458.0)}
+REAL_USABLE_FRACTION = 0.5                       # lead-acid designed for 50% depth of discharge
+REAL_PV_KW = (264, 330)                          # IRENA range (ITP's Source A: 265-365)
+REAL_NOMINAL_KWH = (2458, 3379)                  # IRENA range
+REAL_USABLE_KWH = (1100, 1600)                   # ITP Source A (= ~50% of nominal)
+REAL_SYSTEM = REAL_SYSTEMS["Fakaofo"]            # used for the Fakaofo forward runs
+MODEL_USABLE_FRACTION = 1 - config.BATTERY[CHEMISTRY]["min_soc"]
 
 SENS_TARGETS = [0.95, 0.99, 1.0]
 SENS_DESIGN_YEARS = [1, 8, 15]
 FORWARD_YEARS = 15
 FADE_RATES = [0.04, 0.06, 0.08]
 
-PRICES_USD_PER_L = [1.10, 1.50, 2.00, 2.50, 2.70, 3.00, 3.50]
+PRICES_USD_PER_L = [config.TOKELAU_DIESEL_PRICE_LOW_USD_PER_L, 1.50, DIESEL_PRICE, 2.00, 2.50,
+                    config.TOKELAU_DIESEL_PRICE_HIGH_USD_PER_L, 3.00, 3.50]
 DISCOUNT_RATES = [config.DISCOUNT_RATE, config.DISCOUNT_RATE_LOW]
 
 # The three atolls, ~200 L/day diesel each [MAT] x 3 kWh/L = ~600 kWh/day each.
@@ -80,6 +86,15 @@ def _vs(value, lo, hi=None):
     return "within range"
 
 
+def _payback(capex, net_saving):
+    """Simple payback, years; inf if the net yearly saving is not positive."""
+    return capex / net_saving if net_saving > 0 else float("inf")
+
+
+def _yrs(x):
+    return "never" if x == float("inf") else f"{x:.1f}y"
+
+
 def _ratio(value, lo, hi=None):
     """Model / real as 'a-bx' for a range (model/hi to model/lo), or 'ax' for one number."""
     if hi is None:
@@ -91,20 +106,22 @@ def sensitivity_table(pv_per_kw):
     """Section 2: sizing for each (target, design year), per daily load."""
     print("=" * 100)
     print(f"2. SENSITIVITY: target x design year ({CHEMISTRY}; battery kWh = nominal as installed;")
-    print("   ratio = model / real, so 1.00x inside the range means a match)")
+    print("   ratio = model / real range; a range containing 1.00x means a match. Nominal vs IRENA nominal,")
+    print("   usable vs ITP Source A usable)")
     print("=" * 100)
     for daily in DAILY_LOADS_KWH:
         load = village_profile(daily)
         print(f"\nDaily load {daily} kWh/day (year 1)")
-        print(f"{'target':>6} {'year':>4} | {'PV kWp':>7} {'vs 265-365':>11} | "
-              f"{'batt kWh':>8} {'vs 1.1-1.6 MWh':>14} {'vs 2.7 MWh':>10} | "
+        print(f"{'target':>6} {'year':>4} | {'PV kWp':>7} {'vs 264-330':>11} | "
+              f"{'nom kWh':>8} {'vs 2.5-3.4 MWh':>14} | {'usable':>7} {'vs 1.1-1.6':>11} | "
               f"{'share':>7} {'meets':>5}")
         for target in SENS_TARGETS:
             for year in SENS_DESIGN_YEARS:
                 o = size_system(load, pv_per_kw, target, CHEMISTRY, DIESEL_PRICE, design_year=year)
+                usable = o.battery_kwh * MODEL_USABLE_FRACTION
                 print(f"{target:>6.2f} {year:>4} | {o.pv_kw:>7.0f} {_ratio(o.pv_kw, *REAL_PV_KW):>11} | "
-                      f"{o.battery_kwh:>8.0f} {_ratio(o.battery_kwh, *SOURCE_A_BATT_KWH):>14} "
-                      f"{_ratio(o.battery_kwh, SOURCE_B_BATT_KWH):>10} | "
+                      f"{o.battery_kwh:>8.0f} {_ratio(o.battery_kwh, *REAL_NOMINAL_KWH):>14} | "
+                      f"{usable:>7.0f} {_ratio(usable, *REAL_USABLE_KWH):>11} | "
                       f"{o.renewable_share:>7.2%} {str(o.meets_target):>5}")
     print("\nmeets=False rows: no option in the search range reached the target; the row is the")
     print("highest-share option, which sits at the search upper bounds (PV 15x avg load, battery")
@@ -250,15 +267,15 @@ def atoll_payback():
             f"kWh/day each, vs reported ~{TOKELAU_REPORTED_PAYBACK_YEARS} yrs. Real cost: "
             f"NZD {TOKELAU_2012_CAPEX_NZD / 1e6:.1f}M NZ advance (USD {real_capex_usd / 1e6:.1f}M), "
             f"NZD {TOKELAU_2012_TOTAL_COST_NZD / 1e6:.1f}M total (USD {total_cost_usd / 1e6:.1f}M)")
-    pv_r, batt_r = REAL_SYSTEM
     print(f"{'atoll':<10} | {'recommended design':>20} {'capex $':>11} {'payback':>8} | "
-          f"{'real 300/1350, saving $/yr':>26} {'payback @ NZD 7M':>17} {'@ NZD 8.5M':>11}")
+          f"{'real system (IRENA)':>20} {'saving $/yr':>11} {'payback @ NZD 7M':>17} {'@ NZD 8.5M':>11}")
     totals = {"rec_capex": 0.0, "rec_net": 0.0, "real_net": 0.0}
     for name, lat, lon in ATOLLS:
         _, comp = _detailed(name, lat, lon, ATOLL_DAILY_KWH)
         rec = comp.recommended
         e_rec = _econ(rec, DIESEL_PRICE)
         pv_per_kw = pv_output_per_kw(fetch_weather(lat, lon))
+        pv_r, batt_r = REAL_SYSTEMS[name]
         real_years = run_years(pv_r, batt_r, village_profile(ATOLL_DAILY_KWH), pv_per_kw,
                                CHEMISTRY, FORWARD_YEARS)
         om_real = fin.annual_om_usd(pv_r, batt_r)
@@ -268,12 +285,14 @@ def atoll_payback():
         totals["rec_net"] += e_rec.annual_saving_year1_usd - rec.annual_om_usd
         totals["real_net"] += e_real.annual_saving_year1_usd - om_real
         print(f"{name:<10} | {f'{rec.pv_kw:.0f} kWp / {rec.battery_kwh:.0f} kWh':>20} "
-              f"{rec.capex_usd:>11,.0f} {e_rec.payback_years:>7.1f}y | "
-              f"{e_real.annual_saving_year1_usd:>26,.0f} {e_real.payback_years:>16.1f}y "
-              f"{e_real.payback_years * total_cost_usd / real_capex_usd:>10.1f}y")
+              f"{rec.capex_usd:>11,.0f} {_yrs(e_rec.payback_years):>8} | "
+              f"{f'{pv_r:.0f} kWp / {batt_r:.0f} kWh':>20} {e_real.annual_saving_year1_usd:>11,.0f} "
+              f"{_yrs(e_real.payback_years):>17} "
+              f"{_yrs(e_real.payback_years * total_cost_usd / real_capex_usd):>11}")
     print(f"{'ALL THREE':<10} | {'':>20} {totals['rec_capex']:>11,.0f} "
-          f"{totals['rec_capex'] / totals['rec_net']:>7.1f}y | {'':>26} "
-          f"{real_capex_usd / totals['real_net']:>16.1f}y {total_cost_usd / totals['real_net']:>10.1f}y")
+          f"{_yrs(_payback(totals['rec_capex'], totals['rec_net'])):>8} | {'':>20} {'':>11} "
+          f"{_yrs(_payback(real_capex_usd, totals['real_net'])):>17} "
+          f"{_yrs(_payback(total_cost_usd, totals['real_net'])):>11}")
     print(f"Reported: ~{TOKELAU_REPORTED_PAYBACK_YEARS} years (method not stated). Real-system payback = "
           f"real cost / (model's year-1 fuel + generator O&M saving - solar O&M).")
     print()
@@ -299,12 +318,12 @@ def main():
         print(f"          curtailed {s.curtailed_kwh / s.pv_kwh:.0%} of PV | "
               f"diesel {opt.diesel_litres:,.0f} L/yr | capex ${opt.capex_usd:,.0f} (placeholder costs) | "
               f"backup @5 kW {backup_hours(opt.battery_kwh, CHEMISTRY, 5.0):.0f} h")
-        print(f"  Real PV {REAL_PV_KW[0]}-{REAL_PV_KW[1]} kWp:            "
+        print(f"  Real PV {REAL_PV_KW[0]}-{REAL_PV_KW[1]} kWp (IRENA):                 "
               f"model is {_vs(opt.pv_kw, *REAL_PV_KW)}")
-        print(f"  Source A battery {SOURCE_A_BATT_KWH[0]}-{SOURCE_A_BATT_KWH[1]} kWh:  "
-              f"model is {_vs(opt.battery_kwh, *SOURCE_A_BATT_KWH)}")
-        print(f"  Source B battery ~{SOURCE_B_BATT_KWH:.0f} kWh (over 8 MWh / 3): "
-              f"model is {_vs(opt.battery_kwh, SOURCE_B_BATT_KWH)}\n")
+        print(f"  Real battery nominal {REAL_NOMINAL_KWH[0]:,}-{REAL_NOMINAL_KWH[1]:,} kWh (IRENA): "
+              f"model nominal is {_vs(opt.battery_kwh, *REAL_NOMINAL_KWH)}")
+        print(f"  Real battery usable {REAL_USABLE_KWH[0]:,}-{REAL_USABLE_KWH[1]:,} kWh (ITP Source A): "
+              f"model usable is {_vs(opt.battery_kwh * MODEL_USABLE_FRACTION, *REAL_USABLE_KWH)}\n")
 
     sensitivity_table(pv_per_kw)
     forward_run(pv_per_kw)
