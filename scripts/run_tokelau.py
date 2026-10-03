@@ -15,6 +15,8 @@ Sections:
      year it drops below the target at each.
   6. Diesel price x discount rate: hybrid vs diesel-only USD/kWh, payback, breakeven price.
   7. Payback for all three atolls vs Tokelau's reported ~9-year simple payback.
+  8. Measured-performance test: the real systems at their measured 2013 demand vs the measured
+     Nov 2012-May 2013 solar fractions (IT Power 2013).
 Fade, PV derate and growth come from sunsafe/lifecycle/degradation.py (placeholders in config.py).
 Reference figures (real 2012 systems, per atoll; SOURCES.md items 1-2):
   IRENA (2013) Table 2: Fakaofo 330 kWp / 3,379 kWh, Atafu 297 / 2,765, Nukunonu 264 / 2,458
@@ -27,10 +29,14 @@ import sys
 from functools import lru_cache
 from pathlib import Path
 
+import numpy as np
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sunsafe import config  # noqa: E402
 from sunsafe.energy.backup import backup_hours  # noqa: E402
+from sunsafe.energy.simulate import simulate  # noqa: E402
+from sunsafe.hours import MONTH_OF_HOUR  # noqa: E402
 from sunsafe.energy.sizing import size_system  # noqa: E402
 from sunsafe.energy.solar import fetch_weather, pv_output_per_kw  # noqa: E402
 from sunsafe.interface import Inputs  # noqa: E402
@@ -73,6 +79,19 @@ ATOLL_DAILY_KWH = 600
 TOKELAU_2012_CAPEX_NZD = 7.0e6           # NZ advance
 TOKELAU_2012_TOTAL_COST_NZD = 8.5e6      # total project cost
 TOKELAU_REPORTED_PAYBACK_YEARS = 9
+
+# Measured operation, 1 Nov 2012 - 31 May 2013 (211 days), from SD-card logs [IT Power 2013,
+# pp. 14-19]. Fakaofo is excluded: its logs were missing, so ITP's Fakaofo figures are estimates.
+#   pv_direct: PV to load/grid, kWh; pv_to_batt: PV into the batteries, kWh; diesel: kWh.
+#   measured: ITP solar fraction = PV generated / (PV + diesel generated); design: designed fraction (p. 8).
+MEASURED_2013 = {
+    "Atafu":    dict(pv_direct=137_976, pv_to_batt=45_840, diesel=14_985, days=211,
+                     measured=0.925, design=0.89),
+    "Nukunonu": dict(pv_direct=130_646, pv_to_batt=42_591, diesel=11_982, days=211,
+                     measured=0.935, design=0.91),
+}
+MEASURED_MONTHS = [10, 11, 0, 1, 2, 3, 4]       # Nov-May (MONTH_OF_HOUR: 0 = Jan)
+OPERATOR_MIN_SOC = 0.6    # operators started the generator at ~60% SOC [IT Power 2013 pp. 62, 98, 120]
 
 
 def _vs(value, lo, hi=None):
@@ -298,6 +317,48 @@ def atoll_payback():
     print()
 
 
+def _measured_period_fraction(pv_kw, batt_kwh, load, lat, lon, min_soc, years):
+    """ITP solar fraction (PV generated / total generated) over Nov-May.
+
+    years = (year for Nov-Dec, year for Jan-May); e.g. (2012, 2013) for the measured period.
+    """
+    pv_gen = gen = 0.0
+    for year, months in ((years[0], [10, 11]), (years[1], [0, 1, 2, 3, 4])):
+        mask = np.isin(MONTH_OF_HOUR, months)
+        r = simulate(pv_kw, batt_kwh, load, pv_output_per_kw(fetch_weather(lat, lon, year)),
+                     CHEMISTRY, min_soc=min_soc)
+        pv_gen += (r.pv_used + r.charge)[mask].sum()
+        gen += r.gen[mask].sum()
+    return pv_gen / (pv_gen + gen)
+
+
+def measured_fraction_test():
+    """Section 8: can the model reproduce the measured 2013 solar fractions?"""
+    _header("8. MEASURED-PERFORMANCE TEST: real 2012 systems (IRENA sizes) at measured 2013 demand,\n"
+            "   solar fraction over Nov-May (ITP metric: PV generated / total generated)")
+    rt = config.BATTERY[CHEMISTRY]["round_trip_eff"]
+    coords = {name: (lat, lon) for name, lat, lon in ATOLLS}
+    print(f"{'atoll':<9} | {'system':>18} {'load kWh/d':>10} | {'measured':>8} {'design':>6} | "
+          f"{'2023 wx, 50%':>12} {'2012-13 wx, 50%':>15} {'2012-13 wx, 60%':>15}")
+    for name, d in MEASURED_2013.items():
+        # Load served = PV direct + battery output (PV into battery x round trip) + diesel.
+        daily = (d["pv_direct"] + d["pv_to_batt"] * rt + d["diesel"]) / d["days"]
+        pv_r, batt_r = REAL_SYSTEMS[name]
+        load = village_profile(daily)
+        lat, lon = coords[name]
+        f23 = _measured_period_fraction(pv_r, batt_r, load, lat, lon, None, (2023, 2023))
+        f_actual = _measured_period_fraction(pv_r, batt_r, load, lat, lon, None, (2012, 2013))
+        f_ops = _measured_period_fraction(pv_r, batt_r, load, lat, lon, OPERATOR_MIN_SOC, (2012, 2013))
+        print(f"{name:<9} | {f'{pv_r:.0f} kWp / {batt_r:.0f} kWh':>18} {daily:>10.0f} | "
+              f"{d['measured']:>8.1%} {d['design']:>6.0%} | {f23:>12.1%} {f_actual:>15.1%} {f_ops:>15.1%}")
+    print("Columns: wx = NASA POWER weather year (2012-13 = the measured Nov 2012-May 2013 period);")
+    print("50% / 60% = minimum battery SOC (operators started the generator at ~60% [IT Power 2013]).")
+    print("Not modelled, documented in IT Power 2013: Nukunonu ~1-week lightning shutdown (p. 9), Atafu")
+    print("morning shading of the front row (p. 122), generator charging/equalising batteries, load shape")
+    print("(placeholder), battery power limits. The model is optimistic if its fraction exceeds 'measured'.")
+    print()
+
+
 def main():
     weather = fetch_weather(LAT, LON)
     pv_per_kw = pv_output_per_kw(weather)
@@ -331,6 +392,7 @@ def main():
     fade_sensitivity(pv_per_kw)
     price_sensitivity()
     atoll_payback()
+    measured_fraction_test()
 
 
 if __name__ == "__main__":

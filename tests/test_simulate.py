@@ -83,3 +83,11 @@ def test_one_year_well_under_a_second(load_kw, pv_per_kw):
     t0 = time.perf_counter()
     simulate(300.0, 1500.0, load_kw, pv_per_kw, "lead_acid")
     assert time.perf_counter() - t0 < 0.2
+
+
+def test_min_soc_override(load_kw, pv_per_kw):
+    default = simulate(200.0, 800.0, load_kw, pv_per_kw, "lead_acid")
+    stricter = simulate(200.0, 800.0, load_kw, pv_per_kw, "lead_acid", min_soc=0.6)
+    assert stricter.soc.min() >= 0.6 - TOL
+    assert stricter.gen_kwh > default.gen_kwh
+    np.testing.assert_allclose(stricter.pv_used + stricter.discharge + stricter.gen, load_kw, atol=TOL)

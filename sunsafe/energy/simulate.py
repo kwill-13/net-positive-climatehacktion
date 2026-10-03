@@ -16,6 +16,7 @@ Time step is 1 hour, so kW and kWh per step are numerically equal.
 """
 
 import math
+from typing import Optional
 from dataclasses import dataclass
 
 import numpy as np
@@ -69,7 +70,8 @@ def battery_params(chemistry: str) -> dict:
 
 
 def simulate(pv_kw: float, battery_kwh: float, load_kw: np.ndarray, pv_per_kw: np.ndarray,
-             chemistry: str = "lithium", start_soc: float = 1.0) -> SimResult:
+             chemistry: str = "lithium", start_soc: float = 1.0,
+             min_soc: Optional[float] = None) -> SimResult:
     """
     Simulate one year of hourly operation.
 
@@ -81,6 +83,8 @@ def simulate(pv_kw: float, battery_kwh: float, load_kw: np.ndarray, pv_per_kw: n
         pv_per_kw: hourly PV output per kW installed, kW/kWp, same shape as load_kw.
         chemistry: "lithium" or "lead_acid" (sets min SOC and efficiencies).
         start_soc: state of charge at the start of hour 0, 0-1. Clamped to [min_soc, 1].
+        min_soc: override the chemistry's minimum state of charge, 0-1 (e.g. operators who start
+            the generator at 60%). None uses config.BATTERY[chemistry]["min_soc"].
 
     Returns:
         SimResult with hourly arrays and annual summary.
@@ -93,6 +97,8 @@ def simulate(pv_kw: float, battery_kwh: float, load_kw: np.ndarray, pv_per_kw: n
         raise ValueError("pv_kw and battery_kwh must be >= 0")
 
     p = battery_params(chemistry)
+    if min_soc is not None:
+        p["min_soc"] = min_soc
     eta_c, eta_d = p["eta_charge"], p["eta_discharge"]
     e_max = float(battery_kwh)
     e_min = p["min_soc"] * e_max
