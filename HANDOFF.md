@@ -5,7 +5,8 @@ William owns the energy model (`sunsafe/energy/`) and the lifecycle/finance mode
 `sunsafe/config.py`; anything marked TODO is a placeholder.
 
 The model freeze was lifted on 3 Oct 2026; git tag `model-freeze-2026-10-03` marks the
-frozen state. Changes to defaults or model logic still go through William, with a sourced
+frozen state. It was unfrozen again on 3-4 Oct for the rolling plan and growth schedule
+(branch `rolling-plan`; see "Rolling plan" below), and is re-frozen after that. Changes to defaults or model logic still go through William, with a sourced
 reason. The fake model (`run_sunsafe_fake`) has been removed: `sunsafe/interface.py` now
 holds only the `Inputs`/`Results` definitions.
 
@@ -36,6 +37,11 @@ sidebar and on Site Setup, and shows no results. There is no fallback to made-up
 - **`headroom`:** monthly surplus solar, new loads that fit the leanest month, and
   electricity's share of the community's energy use.
 - **`warnings`:** the recommended strategy plus every placeholder still in use. Show them.
+- **`plan_stages`** (new, optional, added 4 Oct 2026): every investment in the recommended plan,
+  in year order, as `PlanStage(year, pv_added_kw, battery_installed_kwh, capex_usd)`. The first
+  entry is the initial build (= `sizing`). Later entries are battery replacements (B), the
+  staged upgrade (C) or each rolling-plan stage (D). It defaults to `[]`, so old callers work
+  unchanged. Use it to show a multi-upgrade timeline, because D can have 2-4 upgrades.
 
 **Assumptions.** All are in `sunsafe/config.py`, which starts with a sources block. Each
 value is commented with its source, or with TODO if it is still a placeholder.
@@ -133,6 +139,38 @@ USD 1.87/L, 9%/yr growth (from `python scripts/run_tokelau.py`):
   - 2013 solar fraction: model 95-97% vs 92.5-93.5% measured.
   - Sources are in `SOURCES.md`.
 
+## Rolling plan and growth schedule (added 4 Oct 2026)
+
+- **Strategy D, rolling plan:** stage length K in `config.ROLLING_STAGE_YEARS` = (6, 8, 10).
+  - Stage 1 (PV + battery) is sized to meet the target every year through year K.
+  - At the start of each later stage, the existing PV is kept (degraded), PV is added, and a new
+    battery is sized to meet the target to the end of that stage.
+  - The last stage may be shorter. If it is under half a stage, a variant that merges it into
+    the previous stage is also tried, so no battery is bought for a 1-year stub.
+  - Each stage's capex is paid in its year: added PV at today's price, the battery at the
+    declined price.
+- **Recommendation:** the lowest NPV across A, B, C and D among plans that meet the target every year.
+- **Growth schedule:** `degradation.GrowthSchedule(fast_rate, fast_years, steady_rate)`.
+  - Any `growth` argument in the model accepts this or a constant rate.
+  - A constant float uses exactly the old formula. A schedule with `fast_years=0` equals constant
+    `steady_rate`, and a test checks this.
+  - `Inputs` still carries only a constant `demand_growth_per_year`. Scripts pass a schedule with
+    `run_sunsafe_detailed(inputs, growth=GrowthSchedule(0.09, 5, 0.03))`.
+- **Effect on the app demo:** the app runs A-D. For the Fakaofo preset (9%/yr constant growth,
+  15 years) it now recommends **D, 6-yr stages** (upgrades in years 7 and 13), NPV $2.74M, vs
+  $2.80M for C. The validation script (`scripts/run_tokelau.py`) is pinned to A/B/C
+  (`rolling_stage_years=()`), so the reference numbers below are unchanged.
+- **Site presets:** `config.SITE_PRESETS` is one list of sites for scripts and the app. It holds the
+  three Tokelau atolls (validation settings) and 5 **illustrative** Pacific sites:
+  - Abaiang, Kiribati; Lifuka, Tonga; Tanna, Vanuatu; Aitutaki, Cook Islands; Jaluit, Marshall Islands.
+  - These have real coordinates, but their diesel use (200-600 L/day) and price are made up.
+  - The app's Site Setup page still has its own Tokelau `PRESETS` dict and could read this list instead.
+- **`python scripts/run_pacific_presets.py`** prints the recommended strategy, stages, NPV, number of
+  upgrades and runtime at 15/20/25 years with growth 9% for 5 yrs then 3%.
+- **Runtime:** ~9 s for 15 years and ~13 s for 25 years per site. The sizing grid uses a
+  summary-only dispatch (`simulate.annual_gen_kwh`), which gives identical numbers to `simulate`,
+  and sizing results are shared across A-D.
+
 For a strategy comparison screen, `run_sunsafe_detailed(inputs)` returns
 `(results, comparison)`:
 - `comparison.candidates` is every strategy, with PV, battery, replacement year, NPV,
@@ -157,12 +195,13 @@ evening peak. To plug in a better one:
 python scripts/run_tokelau.py
 ```
 
-It works from any directory and takes ~60 s. It prints five sections:
+It works from any directory and takes ~45 s. It prints five sections:
 1. Year-1 cost-optimal sizing vs the real 2012 install.
 2. Target x design-year table.
 3. 15-year decline of the year-1 optimum vs the real 300 kWp / 1,350 kWh system.
 4. Strategy A (build big) vs B (same-size battery replacement) vs C (staged expansion), with the recommended
-   system's lifecycle curves.
+   system's lifecycle curves. D (rolling plan) is left out here to keep the published numbers;
+   `scripts/run_pacific_presets.py` reports it.
 5. The real system's decline at battery fade 0.03 / 0.04 / 0.06 / 0.08, and the first year it
    drops below 95% at each.
 6. Diesel price x discount rate, including a PV USD 4,000/kW high case.
@@ -177,11 +216,15 @@ numbers: report the gap and source the assumptions instead (every `TODO` in `con
 ```python
 simulate(pv_kw, battery_kwh, load_kw, pv_per_kw, chemistry="lithium", start_soc=1.0) -> SimResult
 run_years(pv_kw, battery_kwh, load_kw, pv_per_kw, chemistry, years=15,
-          replace_battery_in=None, growth=0.03, fade=None) -> list[YearResult]
+          replace_battery_in=None, growth=0.03, fade=None,
+          upgrade_in=None, upgrade_pv_kw=None, upgrade_battery_kwh=None,
+          stages=None) -> list[YearResult]       # stages: [(year, total pv_kw, new battery_kwh)]
 size_system(load_kw, pv_per_kw, renewable_target, chemistry, diesel_price,
             design_year=1, demand_growth=0.03, battery_year=None) -> SizingOption
 compare_strategies(load_kw, pv_per_kw, target, chemistry, diesel_price,
-                   project_years=15, growth=0.03) -> StrategyComparison
+                   project_years=15, growth=0.03,
+                   rolling_stage_years=(6, 8, 10)) -> StrategyComparison
+# growth: a constant rate or degradation.GrowthSchedule, everywhere
 ```
 
 - **Units:**
@@ -204,4 +247,4 @@ compare_strategies(load_kw, pv_per_kw, target, chemistry, diesel_price,
   - Discount rate 8% real.
   - Capex at t = 0; O&M and diesel at the end of each year; replacement at the start of its
     year, at a price falling 4%/yr.
-  - Not included: generator capex and O&M, and battery salvage value.
+  - Generator O&M (USD 0.04/kWh) is included; generator capex and battery salvage value are not.
