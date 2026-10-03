@@ -1,6 +1,6 @@
 import dataclasses
 
-from sunsafe import model
+from sunsafe import config, model
 from sunsafe.interface import Results, run_sunsafe_fake
 
 
@@ -40,6 +40,6 @@ def test_lifecycle_fields_follow_contract(lead_acid_run):
 
 def test_fuel_shock_hybrid_cheaper_every_month(lead_acid_run):
     _, real, _ = lead_acid_run
-    assert len(real.fuel_shock) == 6
+    assert [m.month for m in real.fuel_shock] == [m for m, _ in config.FUEL_SHOCK_2026]
     for m in real.fuel_shock:
         assert m.cost_hybrid_usd < m.cost_diesel_only_usd, m.month

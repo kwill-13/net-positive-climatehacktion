@@ -6,7 +6,7 @@ meets the target, then pick the one with the lowest annualised cost:
 
     annual cost = PV capex x CRF(discount, PV life)
                 + battery capex x CRF(discount, battery life)
-                + diesel litres x diesel price
+                + generator fuel + generator O&M
 
 A coarse grid is searched first, then a finer grid around the best coarse point.
 Costs and lifetimes are in config.py (placeholders until sourced).
@@ -18,7 +18,7 @@ from typing import Optional
 import numpy as np
 
 from sunsafe import config
-from sunsafe.energy.diesel import diesel_cost
+from sunsafe.energy.diesel import generator_cost_usd
 from sunsafe.energy.simulate import SimResult, battery_params, simulate
 from sunsafe.lifecycle.degradation import capacity_factor, demand, pv_derate
 
@@ -28,7 +28,7 @@ class SizingOption:
     pv_kw: float                 # kWp
     battery_kwh: float           # kWh nominal, as installed (new)
     capex_usd: float             # USD, PV + battery installed (no generator, no BOS extras)
-    annualised_cost_usd: float   # USD/yr, annualised capex + diesel
+    annualised_cost_usd: float   # USD/yr, annualised capex + generator fuel and O&M
     renewable_share: float       # 0-1, in the design year
     diesel_litres: float         # litres/yr, in the design year
     meets_target: bool           # False only if nothing in the search range met the target
@@ -76,7 +76,7 @@ def _evaluate(pv_kw, battery_kwh, load_kw, pv_per_kw, chemistry, diesel_price, t
               * capital_recovery_factor(config.DISCOUNT_RATE, config.PV_LIFE_YEARS)
               + battery_kwh * config.BATTERY_COST_USD_PER_KWH[chemistry]
               * capital_recovery_factor(config.DISCOUNT_RATE, life)
-              + diesel_cost(sim.diesel_litres, diesel_price))
+              + generator_cost_usd(sim.gen_kwh, diesel_price))
     return SizingOption(
         pv_kw=float(pv_kw), battery_kwh=float(battery_kwh),
         capex_usd=capex_usd(pv_kw, battery_kwh, chemistry),

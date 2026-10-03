@@ -26,12 +26,13 @@ from sunsafe.load_profiles import estimate_daily_load_kwh, village_profile
 
 PLACEHOLDER_WARNINGS = [
     "Load profile is a generic placeholder shape (evening peak), not measured.",
-    "Capital costs (PV, battery) and O&M costs are PLACEHOLDERS in config.py, not yet sourced.",
-    "Battery fade, PV derate, battery life and battery price decline are PLACEHOLDER rates.",
-    "Fuel-shock 2026 price path is a PLACEHOLDER (+35% from April on the site's price).",
+    "PV capex (USD 2,500/kW) and lead-acid capex (USD 350/kWh) are PLACEHOLDERS, not yet sourced.",
+    "Battery fade rates and demand growth are PLACEHOLDER rates.",
     "Headroom: candidate new loads and non-electric energy use are PLACEHOLDERS.",
-    f"Generator efficiency assumed {config.DIESEL_KWH_PER_LITRE} kWh/litre at all loads.",
-    "Generator capex/O&M and battery salvage value are not included in costs.",
+    "Fuel shock uses Apia 2026 retail price CHANGES (relative to March) applied to this site's "
+    "price; remote atolls may see different swings.",
+    f"Generator efficiency fixed at {config.DIESEL_KWH_PER_LITRE} kWh/litre at all loads.",
+    "Generator capex and battery salvage value are not included in costs.",
 ]
 
 
@@ -115,18 +116,16 @@ def run_sunsafe_detailed(inputs: Inputs):
     # ---- finance
     sinking = (fin.sinking_fund_deposit(rec.replacement_usd, rec.replacement_year - 1)
                if rec.replacement_year else 0.0)
-    kwh_by_year = [y.load_kwh for y in rec.years]
-    npv_diesel_only = sum(litres_from_kwh(k) * price * fin.discount(y)
-                          for y, k in enumerate(kwh_by_year, start=1))
-    payback = fin.simple_payback_years(rec.capex_usd, litres_avoided_y1 * price,
-                                       rec.annual_om_usd)
-    if payback == float("inf"):
-        warnings.append("Diesel savings do not cover O&M: the system never pays back.")
+    econ = fin.economics(rec.capex_usd, rec.annual_om_usd, [y.load_kwh for y in rec.years],
+                         [y.gen_kwh for y in rec.years], price, rec.replacement_year,
+                         rec.replacement_usd)
+    if econ.payback_years == float("inf"):
+        warnings.append("Generator savings do not cover O&M: the system never pays back.")
     finance = Finance(
         om_fund_per_year_usd=round(rec.annual_om_usd + sinking),
-        cost_per_kwh_hybrid_usd=round(fin.levelised_cost_per_kwh(rec.npv_usd, kwh_by_year), 3),
-        cost_per_kwh_diesel_usd=round(fin.levelised_cost_per_kwh(npv_diesel_only, kwh_by_year), 3),
-        payback_years=round(payback, 1),
+        cost_per_kwh_hybrid_usd=round(econ.cost_per_kwh_hybrid_usd, 3),
+        cost_per_kwh_diesel_usd=round(econ.cost_per_kwh_diesel_usd, 3),
+        payback_years=round(econ.payback_years, 1),
     )
 
     # ---- fuel shock (year-1 operation)

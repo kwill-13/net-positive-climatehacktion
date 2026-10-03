@@ -47,9 +47,12 @@ def test_replacement_price_declines():
 
 
 def test_npv_and_levelised_cost_simple_case():
-    # capex 100, no O&M, 1 litre/yr at $1 for 2 years, 8%
-    npv = fin.lifetime_npv_usd(100, 0, [1, 1], 1.0)
-    assert npv == pytest.approx(100 + 1 / 1.08 + 1 / 1.08 ** 2)
+    # capex 100, no O&M, 3 kWh/yr from the generator (1 litre at $1 + 3 x gen O&M), 2 years, 8%
+    yearly = 1.0 + 3 * fin.config.GEN_OM_USD_PER_KWH
+    npv = fin.lifetime_npv_usd(100, 0, [3, 3], 1.0)
+    assert npv == pytest.approx(100 + yearly / 1.08 + yearly / 1.08 ** 2)
+    assert fin.lifetime_npv_usd(100, 0, [3, 3], 1.0, rate=0.06) == pytest.approx(
+        100 + yearly / 1.06 + yearly / 1.06 ** 2)
     assert fin.levelised_cost_per_kwh(npv, [10, 10]) == pytest.approx(
         npv / (10 / 1.08 + 10 / 1.08 ** 2))
 
@@ -57,3 +60,16 @@ def test_npv_and_levelised_cost_simple_case():
 def test_payback():
     assert fin.simple_payback_years(1000, 300, 100) == pytest.approx(5)
     assert fin.simple_payback_years(1000, 100, 100) == float("inf")
+
+
+def test_economics_fixed_design():
+    e = fin.economics(capex_usd=1000, annual_om=10, load_kwh_by_year=[300, 300],
+                      gen_kwh_by_year=[30, 30], diesel_price=2.0)
+    per_kwh_gen = 2.0 / fin.config.DIESEL_KWH_PER_LITRE + fin.config.GEN_OM_USD_PER_KWH
+    assert e.annual_saving_year1_usd == pytest.approx(270 * per_kwh_gen)
+    assert e.payback_years == pytest.approx(1000 / (270 * per_kwh_gen - 10))
+    assert e.cost_per_kwh_diesel_usd == pytest.approx(per_kwh_gen)
+    # Higher diesel price -> diesel-only cost rises faster than hybrid.
+    e2 = fin.economics(1000, 10, [300, 300], [30, 30], 4.0)
+    assert (e2.cost_per_kwh_diesel_usd - e.cost_per_kwh_diesel_usd
+            > e2.cost_per_kwh_hybrid_usd - e.cost_per_kwh_hybrid_usd)

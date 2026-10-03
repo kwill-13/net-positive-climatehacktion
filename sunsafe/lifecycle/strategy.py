@@ -11,7 +11,7 @@ B  "Moderate + planned replacement", for each N in config.STRATEGY_REPLACEMENT_A
    both, because renewable share only rises with more PV or more battery.
 
 Every candidate is then checked with run_years() in every year, and the feasible one with
-the lowest NPV (capex + O&M + replacement + diesel) is recommended. The year-1
+the lowest NPV (capex + O&M + replacement + generator fuel and O&M) is recommended. The year-1
 cost-optimal design is kept for reporting only.
 """
 
@@ -77,7 +77,7 @@ def evaluate(name: str, pv_kw: float, battery_kwh: float, replacement_year: Opti
     repl = (finance.replacement_cost_usd(battery_kwh, chemistry, replacement_year)
             if replacement_year else 0.0)
     om = finance.annual_om_usd(pv_kw, battery_kwh)
-    npv = finance.lifetime_npv_usd(capex, om, [y.diesel_litres for y in years], diesel_price,
+    npv = finance.lifetime_npv_usd(capex, om, [y.gen_kwh for y in years], diesel_price,
                                    replacement_year, repl)
     min_share = min(y.renewable_share for y in years)
     return Strategy(name=name, pv_kw=pv_kw, battery_kwh=battery_kwh,
