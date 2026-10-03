@@ -1,0 +1,247 @@
+Fakaofo (-9.38, -171.24) | weather source: nasa_power | PV yield 1491 kWh/kWp/yr | lead_acid, target 95%
+
+====================================================================================================
+1. YEAR-1 COST-OPTIMAL SIZING
+====================================================================================================
+--- Daily load 600 kWh/day ---
+  Model:  PV    184 kWp | battery    750 kWh nominal (375 kWh usable) | renewable 95.2% | meets target: True
+          curtailed 14% of PV | diesel 3,500 L/yr | capex $723,026 (placeholder costs) | backup @5 kW 67 h
+  Real PV 265-365 kWp:            model is 0.70x of low end
+  Source A battery 1100-1600 kWh:  model is 0.68x of low end
+  Source B battery ~2667 kWh (8 MWh / 3): model is 0.28x
+
+--- Daily load 720 kWh/day ---
+  Model:  PV    221 kWp | battery    900 kWh nominal (450 kWh usable) | renewable 95.2% | meets target: True
+          curtailed 14% of PV | diesel 4,200 L/yr | capex $867,632 (placeholder costs) | backup @5 kW 80 h
+  Real PV 265-365 kWp:            model is 0.83x of low end
+  Source A battery 1100-1600 kWh:  model is 0.82x of low end
+  Source B battery ~2667 kWh (8 MWh / 3): model is 0.34x
+
+====================================================================================================
+2. SENSITIVITY: target x design year (lead_acid; battery kWh = nominal as installed;
+   ratio = model / real, so 1.00x inside the range means a match)
+====================================================================================================
+
+Daily load 600 kWh/day (year 1)
+target year |  PV kWp  vs 265-365 | batt kWh vs 1.1-1.6 MWh vs 2.7 MWh |   share meets
+  0.95    1 |     184  0.50-0.70x |      750     0.47-0.68x      0.28x |  95.21%  True
+  0.95    8 |     244  0.67-0.92x |     1351     0.84-1.23x      0.51x |  95.10%  True
+  0.95   15 |     315  0.86-1.19x |     2563     1.60-2.33x      0.96x |  95.28%  True
+  0.99    1 |     261  0.71-0.98x |     1012     0.63-0.92x      0.38x |  99.01%  True
+  0.99    8 |     426  1.17-1.61x |     1422     0.89-1.29x      0.53x |  99.01%  True
+  0.99   15 |     567  1.55-2.14x |     2563     1.60-2.33x      0.96x |  99.00%  True
+  1.00    1 |     375  1.03-1.42x |     1800     1.12-1.64x      0.68x |  99.99% False
+  1.00    8 |     461  1.26-1.74x |     3414     2.13-3.10x      1.28x |  99.98% False
+  1.00   15 |     567  1.55-2.14x |     6474     4.05-5.89x      2.43x |  99.97% False
+
+Daily load 720 kWh/day (year 1)
+target year |  PV kWp  vs 265-365 | batt kWh vs 1.1-1.6 MWh vs 2.7 MWh |   share meets
+  0.95    1 |     221  0.61-0.83x |      900     0.56-0.82x      0.34x |  95.21%  True
+  0.95    8 |     293  0.80-1.11x |     1622     1.01-1.47x      0.61x |  95.10%  True
+  0.95   15 |     378  1.03-1.43x |     3075     1.92-2.80x      1.15x |  95.28%  True
+  0.99    1 |     313  0.86-1.18x |     1215     0.76-1.10x      0.46x |  99.01%  True
+  0.99    8 |     511  1.40-1.93x |     1707     1.07-1.55x      0.64x |  99.01%  True
+  0.99   15 |     681  1.86-2.57x |     3075     1.92-2.80x      1.15x |  99.00%  True
+  1.00    1 |     450  1.23-1.70x |     2160     1.35-1.96x      0.81x |  99.99% False
+  1.00    8 |     553  1.52-2.09x |     4097     2.56-3.72x      1.54x |  99.98% False
+  1.00   15 |     681  1.86-2.57x |     7769     4.86-7.06x      2.91x |  99.97% False
+
+meets=False rows: no option in the search range reached the target; the row is the
+highest-share option, which sits at the search upper bounds (PV 15x avg load, battery
+3 days of effective storage), so those sizes reflect the bounds, not a design.
+
+====================================================================================================
+3. FORWARD RUN, 15 years, no battery replacement (lead_acid). Real system = 300 kWp / 1350 kWh
+====================================================================================================
+
+Daily load 600 kWh/day (year 1). Year-1 optimum at 95%: 184 kWp / 750 kWh
+year load kWh/d | opt batt kWh opt share | real batt kWh real share
+   1        600 |          750     95.2% |          1350      99.8%
+   2        618 |          705     92.6% |          1269      99.7%
+   3        637 |          663     88.6% |          1193      99.5%
+   4        656 |          623     84.8% |          1121      99.2%
+   5        675 |          586     81.2% |          1054      98.8%
+   6        696 |          550     78.0% |           991      98.5%
+   7        716 |          517     74.9% |           931      98.1%
+   8        738 |          486     72.1% |           875      97.3%
+   9        760 |          457     69.5% |           823      93.9%
+  10        783 |          430     67.1% |           774      89.7%
+  11        806 |          404     64.9% |           727      85.8%
+  12        831 |          380     62.8% |           684      82.3%
+  13        855 |          357     60.9% |           642      79.0%
+  14        881 |          336     59.1% |           604      75.9%
+  15        908 |          315     57.4% |           568      73.2%
+
+Daily load 720 kWh/day (year 1). Year-1 optimum at 95%: 221 kWp / 900 kWh
+year load kWh/d | opt batt kWh opt share | real batt kWh real share
+   1        720 |          900     95.2% |          1350      99.2%
+   2        742 |          846     92.6% |          1269      98.8%
+   3        764 |          795     88.6% |          1193      98.4%
+   4        787 |          748     84.8% |          1121      98.0%
+   5        810 |          703     81.2% |          1054      97.5%
+   6        835 |          661     78.0% |           991      96.3%
+   7        860 |          621     74.9% |           931      92.7%
+   8        886 |          584     72.1% |           875      88.6%
+   9        912 |          549     69.5% |           823      84.8%
+  10        939 |          516     67.1% |           774      81.2%
+  11        968 |          485     64.9% |           727      78.0%
+  12        997 |          456     62.8% |           684      75.0%
+  13       1027 |          428     60.9% |           642      72.3%
+  14       1057 |          403     59.1% |           604      69.7%
+  15       1089 |          378     57.4% |           568      67.4%
+(includes PV derate; battery never replaced)
+
+====================================================================================================
+4. STRATEGY: build big vs moderate + planned replacement (lead_acid, target 95% EVERY year, 15 yrs, NPV at 8%)
+====================================================================================================
+
+Daily load 600 kWh/day (year 1)
+  strategy                  PV kWp batt kWh replace  15-yr NPV $ O&M fund $/yr min share    ok
+  A: build big                 315     2563       -    2,109,814        47,658     95.3%  True
+  B: replace in year 6         315     1881       6    2,179,029       132,332     95.3%  True
+  B: replace in year 7         315     1768       7    2,070,982       105,737     95.3%  True
+  B: replace in year 8         315     1662       8    1,976,652        87,635     95.3%  True
+  B: replace in year 9         315     1562       9    1,894,083        74,734     95.3%  True
+  B: replace in year 10        315     1481      10    1,828,240        65,577     95.5%  True  <- recommended
+  B: replace in year 11        315     1622      11    1,880,940        64,315     96.8%  True
+  B: replace in year 12        315     1778      12    1,941,299        63,665     96.9%  True
+  B: replace in year 13        315     1948      13    2,009,201        63,523     96.6%  True
+  (report only) year-1 cost-optimal: 184 kWp / 750 kWh
+  Recommended: capex $1,305,007 | hybrid $0.82/kWh vs diesel $0.94/kWh | payback 7.7 yrs
+
+  Lifecycle curves for the recommended system (B: replace in year 10):
+  year demand kWh/d | with planned replacement | never replaced usable batt kWh
+     1          600 |                    99.9% |          99.9%             740
+     2          618 |                    99.8% |          99.8%             696
+     3          636 |                    99.7% |          99.7%             654
+     4          656 |                    99.5% |          99.5%             615
+     5          675 |                    99.2% |          99.2%             578
+     6          696 |                    98.9% |          98.9%             543
+     7          716 |                    98.5% |          98.5%             511
+     8          738 |                    98.2% |          98.2%             480
+     9          760 |                    97.5% |          97.5%             451
+    10          783 |                    98.9% |          94.1%             424
+    11          806 |                    98.6% |          89.9%             399
+    12          830 |                    98.1% |          86.0%             375
+    13          856 |                    97.6% |          82.4%             352
+    14          881 |                    96.8% |          79.1%             331
+    15          908 |                    95.5% |          76.1%             311
+
+Daily load 720 kWh/day (year 1)
+  strategy                  PV kWp batt kWh replace  15-yr NPV $ O&M fund $/yr min share    ok
+  A: build big                 378     3075       -    2,531,777        57,189     95.3%  True
+  B: replace in year 6         378     2257       6    2,614,835       158,799     95.3%  True
+  B: replace in year 7         378     2122       7    2,485,179       126,884     95.3%  True
+  B: replace in year 8         378     1994       8    2,371,982       105,162     95.3%  True
+  B: replace in year 9         378     1875       9    2,272,900        89,681     95.3%  True
+  B: replace in year 10        378     1777      10    2,193,888        78,692     95.5%  True  <- recommended
+  B: replace in year 11        378     1947      11    2,257,128        77,178     96.8%  True
+  B: replace in year 12        378     2133      12    2,329,559        76,398     96.9%  True
+  B: replace in year 13        378     2338      13    2,411,041        76,227     96.6%  True
+  (report only) year-1 cost-optimal: 221 kWp / 900 kWh
+  Recommended: capex $1,566,008 | hybrid $0.82/kWh vs diesel $0.94/kWh | payback 7.7 yrs
+
+  Lifecycle curves for the recommended system (B: replace in year 10):
+  year demand kWh/d | with planned replacement | never replaced usable batt kWh
+     1          720 |                    99.9% |          99.9%             888
+     2          742 |                    99.8% |          99.8%             835
+     3          764 |                    99.7% |          99.7%             785
+     4          787 |                    99.5% |          99.5%             738
+     5          810 |                    99.2% |          99.2%             694
+     6          835 |                    98.9% |          98.9%             652
+     7          860 |                    98.5% |          98.5%             613
+     8          886 |                    98.2% |          98.2%             576
+     9          912 |                    97.5% |          97.5%             542
+    10          939 |                    98.9% |          94.1%             509
+    11          968 |                    98.6% |          89.9%             478
+    12          997 |                    98.1% |          86.0%             450
+    13         1026 |                    97.6% |          82.4%             423
+    14         1057 |                    96.8% |          79.1%             397
+    15         1089 |                    95.5% |          76.1%             374
+
+====================================================================================================
+5. FADE SENSITIVITY: real system 300 kWp / 1350 kWh lead_acid, never replaced (config default fade 0.06)
+====================================================================================================
+
+Daily load 600 kWh/day (year 1): renewable share by year
+year |  fade 0.04  fade 0.06  fade 0.08
+   1 |      99.8%      99.8%      99.8%
+   2 |      99.7%      99.7%      99.6%
+   3 |      99.5%      99.5%      99.4%
+   4 |      99.3%      99.2%      99.0%
+   5 |      99.0%      98.8%      98.6%
+   6 |      98.7%      98.5%      98.2%
+   7 |      98.4%      98.1%      96.7%
+   8 |      98.1%      97.3%      91.6%
+   9 |      97.7%      93.9%      86.8%
+  10 |      96.9%      89.7%      82.4%
+  11 |      94.4%      85.8%      78.5%
+  12 |      91.0%      82.3%      74.9%
+  13 |      87.8%      79.0%      71.7%
+  14 |      84.8%      75.9%      68.9%
+  15 |      82.0%      73.2%      66.3%
+First year below 95%:
+  fade 0.04: year 11
+  fade 0.06: year 9
+  fade 0.08: year 8
+
+Daily load 720 kWh/day (year 1): renewable share by year
+year |  fade 0.04  fade 0.06  fade 0.08
+   1 |      99.2%      99.2%      99.2%
+   2 |      98.9%      98.8%      98.7%
+   3 |      98.6%      98.4%      98.3%
+   4 |      98.2%      98.0%      97.8%
+   5 |      97.8%      97.5%      96.8%
+   6 |      97.3%      96.3%      92.4%
+   7 |      96.5%      92.7%      87.5%
+   8 |      94.5%      88.6%      83.0%
+   9 |      91.2%      84.8%      79.0%
+  10 |      88.0%      81.2%      75.3%
+  11 |      84.9%      78.0%      72.0%
+  12 |      82.1%      75.0%      69.0%
+  13 |      79.4%      72.3%      66.3%
+  14 |      76.9%      69.7%      63.9%
+  15 |      74.5%      67.4%      61.7%
+First year below 95%:
+  fade 0.04: year 8
+  fade 0.06: year 7
+  fade 0.08: year 6
+
+====================================================================================================
+6. DIESEL PRICE x DISCOUNT RATE (design fixed at the recommendation for USD 2.70/L; generator O&M USD 0.04/kWh)
+====================================================================================================
+
+Daily load 600 kWh/day: B: replace in year 10, 315 kWp / 1481 kWh, capex $1,305,007
+   USD/L |  hybrid @8%  diesel @8%  hybrid @6%  diesel @6% | payback yrs
+    1.10 |       0.813       0.407       0.740       0.407 |        25.0
+    1.50 |       0.815       0.540       0.742       0.540 |        16.1
+    2.00 |       0.817       0.707       0.744       0.707 |        11.1
+    2.50 |       0.819       0.873       0.747       0.873 |         8.5
+    2.70 |       0.820       0.940       0.748       0.940 |         7.7
+    3.00 |       0.822       1.040       0.749       1.040 |         6.8
+    3.50 |       0.824       1.207       0.751       1.207 |         5.7
+  Breakeven diesel price at 8%: USD 2.34/L (hybrid cheaper per kWh above this)
+  Breakeven diesel price at 6%: USD 2.11/L (hybrid cheaper per kWh above this)
+
+Daily load 720 kWh/day: B: replace in year 10, 378 kWp / 1777 kWh, capex $1,566,008
+   USD/L |  hybrid @8%  diesel @8%  hybrid @6%  diesel @6% | payback yrs
+    1.10 |       0.813       0.407       0.740       0.407 |        25.0
+    1.50 |       0.815       0.540       0.742       0.540 |        16.1
+    2.00 |       0.817       0.707       0.744       0.707 |        11.1
+    2.50 |       0.819       0.873       0.747       0.873 |         8.5
+    2.70 |       0.820       0.940       0.748       0.940 |         7.7
+    3.00 |       0.822       1.040       0.749       1.040 |         6.8
+    3.50 |       0.824       1.207       0.751       1.207 |         5.7
+  Breakeven diesel price at 8%: USD 2.34/L (hybrid cheaper per kWh above this)
+  Breakeven diesel price at 6%: USD 2.11/L (hybrid cheaper per kWh above this)
+
+====================================================================================================
+7. THREE ATOLLS: simple payback at USD 2.70/L, 600 kWh/day each, vs reported ~9 yrs (NZD 7M = USD 5.6M)
+====================================================================================================
+atoll      |   recommended design     capex $  payback | real 300/1350, saving $/yr  payback @ real capex
+Fakaofo    |   315 kWp / 1481 kWh   1,305,007     7.7y |                    205,478                 10.9y
+Nukunonu   |   315 kWp / 1481 kWh   1,305,007     7.7y |                    205,478                 10.9y
+Atafu      |   322 kWp / 1481 kWh   1,323,044     7.9y |                    205,372                 10.9y
+ALL THREE  |                        3,933,057     7.8y |                                            10.9y
+Reported: ~9 years. 'Payback @ real capex' uses the actual project cost and the model's year-1 fuel + generator O&M saving minus solar O&M.
+

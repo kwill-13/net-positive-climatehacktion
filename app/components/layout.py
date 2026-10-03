@@ -29,7 +29,7 @@ div[data-baseweb="input"],div[data-baseweb="input"] input,div[data-baseweb="sele
 [data-testid="stMetric"]{background:#fff;border:1px solid #e0ddd5;border-radius:12px;padding:12px 16px}
 [data-testid="stVerticalBlockBorderWrapper"]{background:#fff;border-radius:14px}
 .card{border:1px solid #e0ddd5;border-radius:12px;padding:14px 18px;background:#fff;margin-bottom:8px}
-.out{border-left:5px solid #1f6f66}.inp{border-left:5px solid #7b6fb0}
+.card.out{border-left:5px solid #1f6f66}.card.inp{border-left:5px solid #7b6fb0}
 .card small,.tag{color:#777;letter-spacing:.08em;text-transform:uppercase;font-size:.72rem;font-weight:600}
 .tag.inp{color:#7b6fb0}.tag.out{color:#1f6f66}
 .card h2{margin:2px 0 0;color:#1f6f66;font-size:1.8rem}
