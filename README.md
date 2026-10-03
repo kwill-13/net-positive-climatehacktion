@@ -16,7 +16,7 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 pytest                             # ~50 tests, ~20 s, runs offline
-python scripts/run_tokelau.py      # validation against the real Tokelau system, ~40 s
+python scripts/run_tokelau.py      # validation against the real Tokelau system, ~60 s
 python -m sunsafe.model            # one demo site through the real run_sunsafe(), ~12 s
 ```
 

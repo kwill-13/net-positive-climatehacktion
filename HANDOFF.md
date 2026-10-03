@@ -57,7 +57,7 @@ Now sourced:
   - Generator O&M USD 0.04/kWh, applied to both diesel-only and hybrid generator output.
 - **Fuel shock:** Apia monthly retail diesel, Mar-Oct 2026, as changes relative to March,
   applied to the site's own price. It peaks at x1.78 in June. `fuel_shock` now has
-  **8 months** (2026-03 to 2026-10), not 6.
+  **8 months** (2026-03 to 2026-10).
 - **Lithium:** battery $600/kWh; life 12 yrs.
 - **Lead-acid:** life 8 yrs.
 - **Ageing:** PV derate 0.5%/yr; battery price decline 4%/yr.
@@ -140,7 +140,7 @@ evening peak. To plug in a better one:
 python scripts/run_tokelau.py
 ```
 
-It works from any directory and takes ~40 s. It prints five sections:
+It works from any directory and takes ~60 s. It prints five sections:
 1. Year-1 cost-optimal sizing vs the real 2012 install.
 2. Target x design-year table.
 3. 15-year decline of the year-1 optimum vs the real 300 kWp / 1,350 kWh system.

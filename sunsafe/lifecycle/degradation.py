@@ -1,7 +1,8 @@
 """
 How the system and its load change with age.
 
-Simple compounding rates from config.py (all PLACEHOLDERS, marked TODO there):
+Simple compounding rates from config.py (PV derate sourced; fade and growth are
+PLACEHOLDERS, marked TODO there):
 battery capacity fade, PV output derate and demand growth. Year 1 = first year of
 operation, when nothing has faded or grown yet.
 """

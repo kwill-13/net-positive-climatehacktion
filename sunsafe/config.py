@@ -98,7 +98,9 @@ BATTERY_ANNUAL_FADE = {
 
 # ------------------------------------------------------------------ demand ----
 
-DEMAND_GROWTH_PER_YEAR = 0.03    # 0-1 per year, compounding; same default as Inputs.demand_growth_per_year
+DEMAND_GROWTH_PER_YEAR = 0.03    # 0-1 per year, compounding; same default as Inputs.demand_growth_per_year.
+                                 # TODO: source. ITP (2019) reported ~9%/yr historical load growth in
+                                 # Tokelau (SOURCES.md item 7); 3% kept as a generic default.
 
 PV_ANNUAL_DERATE = 0.005         # 0-1 per year, compounding. Sourced: median ~0.5%/yr [NREL-DEG]
 
