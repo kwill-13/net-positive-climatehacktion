@@ -12,7 +12,7 @@ Generator capex is excluded from both (the genset stays in both). No salvage val
 """
 
 from dataclasses import dataclass
-from typing import List, Optional, Sequence, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -67,7 +67,8 @@ def lifetime_npv_usd(capex_usd: float, annual_om: Union[float, Sequence[float]],
                      gen_kwh_by_year: Sequence[float],
                      diesel_price: float, replacement_year: Optional[int] = None,
                      replacement_usd: float = 0.0,
-                     rate: float = config.PROJECT_DISCOUNT_RATE) -> float:
+                     rate: float = config.PROJECT_DISCOUNT_RATE,
+                     extra_costs: Optional[Sequence[Tuple[int, float]]] = None) -> float:
     """
     Net present cost over the project: capex + O&M + replacement + generator fuel and O&M.
 
@@ -80,11 +81,15 @@ def lifetime_npv_usd(capex_usd: float, annual_om: Union[float, Sequence[float]],
         replacement_year: year the battery is replaced (start of year), or None.
         replacement_usd: cost of that replacement, USD at the time.
         rate: discount rate per year, 0-1.
+        extra_costs: further investments (year, USD), each paid at the start of that year
+            (t = year - 1), e.g. the later stages of a rolling plan.
 
     Returns:
         USD, present value.
     """
     npv = capex_usd
+    for year, usd in (extra_costs or []):
+        npv += usd * discount(year - 1, rate)
     for year, gen_kwh in enumerate(gen_kwh_by_year, start=1):
         npv += (_om(annual_om, year) + generator_cost_usd(gen_kwh, diesel_price)) * discount(year, rate)
     if replacement_year is not None:
@@ -183,7 +188,8 @@ def economics(capex_usd: float, annual_om: Union[float, Sequence[float]],
               load_kwh_by_year: Sequence[float],
               gen_kwh_by_year: Sequence[float], diesel_price: float,
               replacement_year: Optional[int] = None, replacement_usd: float = 0.0,
-              rate: float = config.PROJECT_DISCOUNT_RATE) -> Economics:
+              rate: float = config.PROJECT_DISCOUNT_RATE,
+              extra_costs: Optional[Sequence[Tuple[int, float]]] = None) -> Economics:
     """
     Hybrid vs diesel-only economics of a FIXED design at one diesel price and discount rate.
 
@@ -196,12 +202,13 @@ def economics(capex_usd: float, annual_om: Union[float, Sequence[float]],
         replacement_year, replacement_usd: planned battery replacement or staged upgrade, if any
             (cost at the start of that year).
         rate: discount rate per year, 0-1.
+        extra_costs: further investments (year, USD) at the start of those years.
 
     Returns:
         Economics.
     """
     npv_h = lifetime_npv_usd(capex_usd, annual_om, gen_kwh_by_year, diesel_price,
-                             replacement_year, replacement_usd, rate)
+                             replacement_year, replacement_usd, rate, extra_costs)
     npv_d = lifetime_npv_usd(0.0, 0.0, load_kwh_by_year, diesel_price, rate=rate)
     saving = (generator_cost_usd(load_kwh_by_year[0], diesel_price)
               - generator_cost_usd(gen_kwh_by_year[0], diesel_price))

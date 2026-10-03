@@ -149,3 +149,43 @@ def simulate(pv_kw: float, battery_kwh: float, load_kw: np.ndarray, pv_per_kw: n
         curtailed_kwh=float(curtailed.sum()),
         diesel_litres=litres_from_kwh(gen_kwh),
     )
+
+
+def annual_gen_kwh(pv_kw: float, battery_kwh: float, load_kw: np.ndarray, pv_per_kw: np.ndarray,
+                   chemistry: str = "lithium") -> float:
+    """
+    Generator kWh for one year: the same dispatch and arithmetic as simulate() (start_soc 1.0,
+    chemistry min SOC), but keeps no hourly arrays. Used by the sizing grid search, where only
+    the total is needed; gives exactly simulate(...).gen_kwh, about twice as fast.
+
+    Args:
+        as simulate().
+
+    Returns:
+        Generator output, kWh/yr.
+    """
+    load = np.asarray(load_kw, dtype=float)
+    p = battery_params(chemistry)
+    eta_c, eta_d = p["eta_charge"], p["eta_discharge"]
+    e_max = float(battery_kwh)
+    e_min = p["min_soc"] * e_max
+    e = min(max(1.0, p["min_soc"]), 1.0) * e_max
+
+    pv_avail = pv_kw * np.asarray(pv_per_kw, dtype=float)
+    pv_used = np.minimum(pv_avail, load)
+    surplus = (pv_avail - pv_used).tolist()
+    deficit_arr = load - pv_used
+    deficit = deficit_arr.tolist()
+
+    discharge = [0.0] * len(load)
+    for t, s in enumerate(surplus):
+        if s > 0.0:
+            e += min(s, (e_max - e) / eta_c) * eta_c
+        else:
+            d = deficit[t]
+            if d > 0.0:
+                out = min(d, (e - e_min) * eta_d)
+                if out > 0.0:
+                    e = max(e - out / eta_d, e_min)
+                    discharge[t] = out
+    return float((deficit_arr - np.array(discharge)).sum())

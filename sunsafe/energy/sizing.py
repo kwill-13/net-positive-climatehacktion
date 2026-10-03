@@ -18,8 +18,8 @@ from typing import Optional
 import numpy as np
 
 from sunsafe import config
-from sunsafe.energy.diesel import generator_cost_usd
-from sunsafe.energy.simulate import SimResult, battery_params, simulate
+from sunsafe.energy.diesel import generator_cost_usd, litres_from_kwh
+from sunsafe.energy.simulate import SimResult, annual_gen_kwh, battery_params, simulate
 from sunsafe.lifecycle.degradation import capacity_factor, demand, pv_derate
 
 
@@ -70,20 +70,23 @@ def capex_usd(pv_kw: float, battery_kwh: float, chemistry: str) -> float:
 def _evaluate(pv_kw, battery_kwh, load_kw, pv_per_kw, chemistry, diesel_price, target,
               cap_factor):
     # Costs use the installed (nominal) battery; performance uses the faded capacity.
-    sim = simulate(pv_kw, battery_kwh * cap_factor, load_kw, pv_per_kw, chemistry)
+    # annual_gen_kwh = simulate(...).gen_kwh without the hourly arrays (grid search speed).
+    gen_kwh = annual_gen_kwh(pv_kw, battery_kwh * cap_factor, load_kw, pv_per_kw, chemistry)
+    load_kwh = float(load_kw.sum())
+    share = 1.0 - gen_kwh / load_kwh if load_kwh > 0 else 1.0
     life = battery_params(chemistry)["life_years"]
     annual = (pv_kw * config.PV_COST_USD_PER_KW
               * capital_recovery_factor(config.DISCOUNT_RATE, config.PV_LIFE_YEARS)
               + battery_kwh * config.BATTERY_COST_USD_PER_KWH[chemistry]
               * capital_recovery_factor(config.DISCOUNT_RATE, life)
-              + generator_cost_usd(sim.gen_kwh, diesel_price))
+              + generator_cost_usd(gen_kwh, diesel_price))
     return SizingOption(
         pv_kw=float(pv_kw), battery_kwh=float(battery_kwh),
         capex_usd=capex_usd(pv_kw, battery_kwh, chemistry),
         annualised_cost_usd=float(annual),
-        renewable_share=sim.renewable_share,
-        diesel_litres=sim.diesel_litres,
-        meets_target=sim.renewable_share >= target - 1e-9,
+        renewable_share=share,
+        diesel_litres=litres_from_kwh(gen_kwh),
+        meets_target=share >= target - 1e-9,
     )
 
 
