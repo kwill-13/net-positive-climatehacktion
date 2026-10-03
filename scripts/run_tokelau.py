@@ -11,7 +11,8 @@ Sections:
   3. 15-year forward run of the year-1 optimal system vs the real installed system.
   4. Strategy A (build big) vs B (moderate + planned replacement), and the recommended
      system's two lifecycle curves (with vs without its planned replacement).
-  5. Section 3's 15-year decline rerun at several battery fade rates.
+  5. The real system's 15-year decline at battery fade 0.04 / 0.06 / 0.08, and the first
+     year it drops below the target at each.
 Fade, PV derate and growth come from sunsafe/lifecycle/degradation.py (placeholders in config.py).
 Reference figures (per atoll):
   Source A: 265-365 kWp PV, 1.1-1.6 MWh nominal lead-acid.
@@ -47,7 +48,6 @@ REAL_SYSTEM = (300.0, 1350.0)      # kWp, kWh nominal lead-acid: mid-range of So
 SENS_TARGETS = [0.95, 0.99, 1.0]
 SENS_DESIGN_YEARS = [1, 8, 15]
 FORWARD_YEARS = 15
-# Brief was cut off after "0.04, 0.06 and"; 0.08 is assumed. Edit freely.
 FADE_RATES = [0.04, 0.06, 0.08]
 
 
@@ -160,22 +160,24 @@ def strategy_comparison(pv_per_kw):
 
 
 def fade_sensitivity(pv_per_kw):
-    """Section 5: section 3's decline at several annual battery fade rates."""
-    _header(f"5. FADE SENSITIVITY: renewable share by year, no replacement ({CHEMISTRY}; "
-            f"fade rates {FADE_RATES}, config default {config.BATTERY_ANNUAL_FADE[CHEMISTRY]})")
+    """Section 5: the real system's 15-year decline at several battery fade rates."""
+    pv, batt = REAL_SYSTEM
+    _header(f"5. FADE SENSITIVITY: real system {pv:.0f} kWp / {batt:.0f} kWh {CHEMISTRY}, never "
+            f"replaced (config default fade {config.BATTERY_ANNUAL_FADE[CHEMISTRY]})")
     for daily in DAILY_LOADS_KWH:
         load = village_profile(daily)
-        opt = size_system(load, pv_per_kw, TARGET, CHEMISTRY, DIESEL_PRICE)
-        systems = {"opt": (opt.pv_kw, opt.battery_kwh), "real": REAL_SYSTEM}
-        runs = {(k, fade): run_years(pv, b, load, pv_per_kw, CHEMISTRY, FORWARD_YEARS, fade=fade)
-                for k, (pv, b) in systems.items() for fade in FADE_RATES}
-        print(f"\nDaily load {daily} kWh/day. opt = year-1 optimum {opt.pv_kw:.0f} kWp / "
-              f"{opt.battery_kwh:.0f} kWh; real = {REAL_SYSTEM[0]:.0f} kWp / {REAL_SYSTEM[1]:.0f} kWh")
-        cols = [f"{k} @{fade:.2f}" for k in systems for fade in FADE_RATES]
-        print(f"{'year':>4} | " + " ".join(f"{c:>10}" for c in cols))
+        runs = {fade: run_years(pv, batt, load, pv_per_kw, CHEMISTRY, FORWARD_YEARS, fade=fade)
+                for fade in FADE_RATES}
+        print(f"\nDaily load {daily} kWh/day (year 1): renewable share by year")
+        print(f"{'year':>4} | " + " ".join(f"{f'fade {fade:.2f}':>10}" for fade in FADE_RATES))
         for i in range(FORWARD_YEARS):
-            vals = [runs[(k, fade)][i].renewable_share for k in systems for fade in FADE_RATES]
-            print(f"{i + 1:>4} | " + " ".join(f"{v:>10.1%}" for v in vals))
+            print(f"{i + 1:>4} | " + " ".join(f"{runs[fade][i].renewable_share:>10.1%}"
+                                              for fade in FADE_RATES))
+        print(f"First year below {TARGET:.0%}:")
+        for fade, years in runs.items():
+            below = next((y.year for y in years if y.renewable_share < TARGET - 1e-9), None)
+            print(f"  fade {fade:.2f}: " + (f"year {below}" if below else
+                                             f"never within {FORWARD_YEARS} years"))
     print()
 
 
