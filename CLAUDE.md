@@ -3,9 +3,11 @@
 ## Core idea
 
 SunSafe helps Pacific island energy officers plan diesel-to-solar mini-grids that still
-work in year 15, and turns the plan into a funding case.
+work in their final year (projects of 10-25 years, default 15), and turns the plan into a funding case.
 
-- The default recommendation is the lowest 15-year-cost design that meets the renewable target every year, not the design-year-1 result.
+- The recommendation is the lowest-cost plan over the project (NPV, 8%) that meets the renewable target
+  every year, chosen from four strategies (A build big, B replace battery once, C expand once, D expand
+  in stages), not the design-year-1 result.
 
 ## Ownership
 
@@ -23,18 +25,23 @@ work in year 15, and turns the plan into a funding case.
   change its fields. (`Results.plan_stages` was added 4 Oct as an optional field, default `[]`.) The implementation is `sunsafe.model.run_sunsafe`; there is no fake model.
 - All assumptions live in `sunsafe/config.py` with units; placeholders are marked TODO.
 - Don't tune the model to hit the Tokelau validation numbers; report the gap and source the assumptions.
-- Dependencies: numpy, pandas, requests, pytest for the model. `streamlit` (>=1.39) is allowed
-  for `app/` only; the model must not import it. Ask before adding more.
+- Dependencies: numpy, pandas, requests, pytest for the model. `streamlit` (>=1.45), `folium` and
+  `streamlit-folium` are allowed for `app/` only; the model must not import them. Ask before adding more.
 - Setup and repo map: README.md. How each part calls the model: HANDOFF.md.
 - Upload source files only (no `__pycache__`/`.pyc`); prefer git from the command line.
 
 ## App (`app/`)
 
-- Run from repo root: `streamlit run app/app.py`. Live link deployed on Streamlit Cloud.
-- Three pages (planning flow, rebuilt 4 Oct): **Your island** (map click or lat/lon, Pacific presets from
-  `config.SITE_PRESETS`, main inputs, growth schedule, "Build my plan"), **Your plan** (decision cards,
-  year-by-year share, strategy NPVs, upgrade timing, cost per kWh vs diesel price incl. island-paid
-  cost, risks, exports), **How we know it works** (Tokelau validation, sensitivity, sources, placeholders).
+- Run from repo root: `streamlit run app/app.py`. Live link deployed on Streamlit Cloud (reboot it from
+  Manage app after a push).
+- Structure: `app/app.py` (page config + `st.navigation`), `app/views/` (home, island, plan, checks),
+  `app/components/layout.py` (model call, presets, map, shared UI, one CSS block),
+  `app/components/charts.py` (the eight Altair charts + shared theme), `app/exports/proposal.py`.
+- Pages: **Home** (hero, Start planning, three step cards); **1 Your island** (folium click map with
+  preset markers, inputs in cards, growth schedule default 9% for 5 years then 3%, "Build my plan");
+  **2 Your plan** (summary, decision cards, eight charts with decision captions, exports);
+  **3 How we know it works** (live Tokelau validation table, sensitivity, sources, placeholders).
+  Every page has a header bar with the wordmark and a 1-2-3 stepper.
 - Uses the real model: `run_sunsafe_detailed` in `app/components/layout.py` (one cached call per plan,
   growth schedule passed as `growth=`). If the import or a run fails, it shows the error and no results.
 - Only `app/components/layout.py` imports the model. Pages read fields off `Results`.
@@ -73,6 +80,10 @@ runs all four strategies, the same as the app (page 3 shows the same validation 
     weather vs 92.5% / 93.5% measured. The model is mildly optimistic (run_tokelau.py section 8).
 - **Real-system payback** at USD 1.87/L: 19.5 yrs (NZD 7M) / 23.7 yrs (NZD 8.5M); 13.8 / 16.7 yrs
   with ITP's solar O&M; ~9 reported. All reference figures are in `SOURCES.md`.
+- **App default** (same site, growth 9% for 5 yrs then 3%): **C, expand once in year 9.** Build 324 kWp /
+  1,439 kWh (720 usable), $1.31M; year 9 +94 kWp and a new 1,717 kWh battery (859 usable), $668k. NPV
+  $2.06M, 9% below building big. Set aside $100k/yr. $0.74/kWh full hybrid vs $0.66 diesel; the island
+  pays $0.27/kWh if donors fund the first build; full-cost breakeven $2.12/L.
 
 ## Known limitations (state these in any write-up)
 
@@ -81,6 +92,7 @@ runs all four strategies, the same as the app (page 3 shows the same validation 
 - The battery references are reconciled (nominal 2.46-3.38 MWh per atoll; ITP's 1.1-1.6 MWh is the usable half).
 - Staged expansion (C) and the rolling plan (D) assume each upgrade happens on time and is funded; added PV is costed at
   today's real price and derated like the original panels.
+- In the validation case the cheapest plan's first upgrade comes ~2 years earlier than Tokelau's real one.
 - The model over-predicts the 2013 solar fraction by ~1-4 points (outages, shading and generator
   charging are not modelled).
 - Modelled real-system payback is 13.8-23.7 yrs (O&M dependent) vs ~9 reported (method unknown).
@@ -89,19 +101,24 @@ runs all four strategies, the same as the app (page 3 shows the same validation 
   but not in the yearly fund figure.
 - Interface gaps: no fuel-shock slider function, no per-load backup hours, no kWh/day per new use.
 
-## Status checklist (as of 2026-10-03)
+## Status checklist (as of 2026-10-04)
+
+Model:
+- [x] Strategies A-D (rolling plan) and the growth schedule; `Results.plan_stages`; model re-frozen
+- [x] Validation, sensitivity and Pacific presets all run on the current engine (A-D)
 
 App:
-- [x] Switch app from the fake model to `sunsafe.model.run_sunsafe`
-- [x] Lifecycle chart (day-one vs year-15), the hero visual
-- [x] Fuel-shock and headroom views
-- [x] Proposal and community one-pager export
+- [x] Real model only; planning flow (Home, Your island, Your plan, How we know it works)
+- [x] Click map, decision cards, eight charts with findings in their titles, live validation table
+- [x] Funding proposal (HTML with charts) and community one-pager exports
+- [x] Checked in Chrome at 1366 px and 800 px; numbers unchanged by styling work
 - [ ] Deployed link tested end to end by someone outside the team
 
 Data and validation:
-- [x] Test 1: sizing vs Tokelau, framed as "day-one undersizes, year-8/15 lands near reality"
-- [ ] Test 2: 15-year decline of the real system (script sections 3 and 5), reported across fade 0.04-0.08. Output exists; write down the pass criteria before comparing, with the placeholder-fade caveat.
+- [x] Test 1: sizing vs Tokelau (first build and first upgrade vs the real 2012 system and 2020 upgrade)
+- [x] Measured-performance test: model vs measured 2013 solar fractions (run_tokelau.py section 8)
+- [x] Tokelau technical review (IT Power 2013) read and cited by page
+- [ ] Test 2: 15-year decline of the real system (script sections 3 and 5), reported across fade 0.03-0.08. Output exists; write down the pass criteria before comparing, with the placeholder-fade caveat.
 - [ ] Test 3: REopt cross-check (first to cut if time runs short; keep the API key out of the repo)
 - [ ] Source every reference number in `SOURCES.md`
-- [ ] Tokelau technical review, if anyone managed to download it
 - [ ] Pre-run demo sites online so NASA weather is cached in `data/cache/`

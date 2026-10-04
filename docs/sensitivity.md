@@ -7,7 +7,8 @@ Analysis only. No model defaults were changed. To reproduce the tables below, ru
 - 600 kWh/day, lead-acid, 95% renewable in every year.
 - Diesel USD 1.87/L, discount rate 8% real.
 - Strategies: A build big, B same-size battery replacement, C staged expansion, D rolling plan.
-- Sections 2 and 3 use the default growth, a constant 9%/yr.
+- Sections 2 and 3 use the config default growth, a constant 9%/yr (the validation case). The app's
+  default growth, 9% for 5 years then 3%, is the third row of section 1.
 
 ## Findings
 

@@ -261,12 +261,13 @@ Still missing:
    of which NZD 7M was New Zealand's advance. Modelled real-system payback at USD 1.87/L is
    19.5 yrs at NZD 7M and 23.7 yrs at NZD 8.5M.
 3. **Diesel price:** the default is USD 1.87/L, derived from Apia 2026 prices plus freight.
-   It is not a quoted Tokelau price, and it sits below the model's 2.34 breakeven, so
-   diesel-only is cheaper per kWh at the default (Part 1b, P1).
+   It is not a quoted Tokelau price, and it sits below the model's breakeven (USD 2.42/L in the
+   validation case at 8%), so diesel-only is cheaper per kWh on full cost at the default (Part 1b, P1).
 4. **Measured performance stops in 2013.** There is no data on 2014-2020 decline.
 5. **Load growth:** 8-11%/yr implied for 2008-13, and 9%/yr reported by ITP; the model now
-   uses 9%. At that growth the cheapest plan is staged expansion (build, then upgrade in
-   ~year 9), which mirrors Tokelau's 2020 upgrade.
+   uses 9%. At a constant 9% the cheapest plan builds smaller and upgrades in years 7 and 13
+   (rolling plan); with 9% easing to 3% after 5 years (the app default) it upgrades once in year 9.
+   Either way the plan is staged, as Tokelau's was (2012 build, 2020 upgrade after ~8 years).
 6. **Demand level:** real 2013 demand was about 850-940 kWh/day (Atafu, Nukunonu), above
    the 600-720 kWh/day validation loads.
 
