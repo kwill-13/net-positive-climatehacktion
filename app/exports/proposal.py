@@ -10,8 +10,8 @@ import json
 import altair as alt
 
 from components import charts
-from components.layout import usable_fraction
-from utils.formatting import battery, money, pct, short_strategy, tco2, years
+from components.layout import plain_recommendation, usable_fraction
+from utils.formatting import battery, money, pct, tco2, years
 
 _VEGA = getattr(alt, "VEGA_VERSION", "5").split(".")[0]
 _VEGALITE = getattr(alt, "VEGALITE_VERSION", "5")
@@ -80,7 +80,7 @@ confirm site demand and diesel price before procurement.</p>
 <p>Build {z.pv_kw:,.0f} kWp solar and a {e(i.battery_chemistry.replace('_', '-'))} battery of
 {battery(z.battery_kwh, usable)} now (capex {money(z.capex_usd)}), then:</p>
 <ul>{''.join(f'<li>{e(s)}</li>' for s in sched)}</ul>
-<p>Strategy: {e(short_strategy(plan['rec_name']))}.{f" {saving:.0%} cheaper over the project than building big on day one." if saving and saving > 0.0005 else ""}</p>
+<p>Recommended: {e(plain_recommendation(plan))}.{f" {saving:.0%} cheaper over the project than building big on day one." if saving and saving > 0.0005 else ""}</p>
 {chart(charts.investment_timeline)}
 
 <h2>It still works in the final year</h2>
