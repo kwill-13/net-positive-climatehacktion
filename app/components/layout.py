@@ -201,7 +201,9 @@ PACIFIC_NOTE = "Defaults (freight, demand growth) are set for Pacific islands; a
 GREEN = "#2e7d32"   # the plan green (charts and theme)
 CSS = """<style>
 :root{--g:#2e7d32;--g-soft:#e8f2e9;--ink:#2b2b2b;--muted:#6b6b6b;--line:#e3e0d8;--card:#fff}
-.block-container{padding-top:1.25rem;padding-bottom:3rem;max-width:1180px}
+/* Streamlit's top bar (60 px; opaque on Streamlit Cloud, where it holds the Cloud toolbar) overlays the
+   page: start the content below it so the SunSafe header is never covered. */
+.block-container{padding-top:4.5rem!important;padding-bottom:3rem;max-width:1180px}
 h1{font-size:1.9rem!important;font-weight:700!important;letter-spacing:-.01em;margin:.2rem 0 .1rem!important;padding:0!important}
 h3{font-size:1.15rem!important;margin:.6rem 0 .2rem!important}
 #MainMenu,footer,[data-testid="stDecoration"]{display:none!important}
