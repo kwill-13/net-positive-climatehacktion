@@ -33,7 +33,8 @@ def _title(text, sub=None):
 def fit_width(chart):
     """Width fits the container; height stays the plot's own height, so long titles add space instead of
     squeezing the plot (Streamlit's default autosize counts titles and labels inside `height`)."""
-    return chart.properties(autosize=alt.AutoSizeParams(type="fit-x", contains="padding"))
+    return chart.properties(autosize=alt.AutoSizeParams(type="fit-x", contains="padding"),
+                            padding={"left": 8, "right": 4, "top": 4, "bottom": 4})   # room for y-axis titles
 
 
 FONT = '"Source Sans", "Source Sans Pro", "Source Sans 3", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif'
@@ -167,7 +168,7 @@ def renewable_share(plan):
                                       "Line": "Never upgraded"}))
     df = pd.concat(parts)
     low = min(df.Share.min(), target * 100)
-    lines = _lines(df, "Year", "Share", "Line", names, n=n, y_title="Renewable share (%)",
+    lines = _lines(df, "Year", "Share", "Line", names, n=n, y_title="Solar share (%)",
                    y_scale=alt.Scale(domain=[max(low - 4, 0), 101], nice=False))
     tline = alt.Chart(pd.DataFrame({"y": [target * 100]})).mark_rule(strokeDash=[6, 4], color=MUTED).encode(y="y:Q")
     tlabel = alt.Chart(pd.DataFrame({"y": [target * 100], "Year": [1], "t": [f"Target {target:.0%}"]})).mark_text(
@@ -221,13 +222,13 @@ def night_coverage(plan):
         title = (f"The battery's backup falls from {start:.1f} to {float(nights.iloc[-1]):.1f} nights by year {n}, "
                  "still enough for the target")
         why = ""
-    sub = (f"1 night = 18:00-06:00 demand, {plan['night_share']:.0%} of a day's demand. Nights of backup = usable "
-           f"battery after fading / that night's demand.{why}")
+    sub = f"1 night = 18:00-06:00 demand ({plan['night_share']:.0%} of a day's demand)"
     chart = alt.layer(lines, ref, reflabel, *_upgrade_rules(plan), *_end_labels(df, "Year", "Nights", "Line", names)
                       ).properties(height=320, title=_title(title, sub))
     solar = yrs.solar_plan
     caption = ("Decision: when to schedule each upgrade. Green = with the plan's upgrades; grey = the first battery, "
-               f"never replaced. Daytime solar is not the limit: yearly solar output stays at {solar.min():.0f}-"
+               f"never replaced. Nights of backup = usable battery after fading / that night's demand.{why} "
+               f"Daytime solar is not the limit: yearly solar output stays at {solar.min():.0f}-"
                f"{solar.max():.0f}% of yearly demand. What runs out is battery storage for the night.")
     return chart, caption
 
@@ -252,9 +253,17 @@ def fund_balance(plan):
             title += "; " + "; ".join(f"year {u['year']} is {_usd(u['shortfall'])} short" for u in short)
     line = _lines(fund, "Year", "Balance", "Line", {"Fund": PLAN}, n=n, y_title="Saved (USD)",
                   y_scale=alt.Scale(zero=True))
-    line = line.encode(y=alt.Y("Balance:Q", title="Saved (USD)", scale=alt.Scale(zero=True),
-                               axis=alt.Axis(format="$.2~s")))
-    layers = [line, *_end_labels(fund, "Year", "Balance", "Line", {"Fund": PLAN})]
+    # step-after: the balance holds through each year and the upgrade's withdrawal is a vertical drop at its year
+    line = line.mark_line(interpolate="step-after", point=alt.OverlayMarkDef(size=25), strokeWidth=2.5).encode(
+        y=alt.Y("Balance:Q", title="Saved (USD)", scale=alt.Scale(zero=True), axis=alt.Axis(format="$.2~s")))
+    layers = [line]
+    if ups and ups[-1]["year"] < n:      # saving continues after the last upgrade: say what it is for
+        end = fund.tail(1)
+        layers.append(alt.Chart(end).mark_text(align="right", baseline="bottom", dx=-6, dy=-6, fontWeight="bold",
+                                               color=PLAN, lineBreak="\n").encode(   # two short lines: narrow charts
+            x="Year:Q", y="Balance:Q", text=alt.value("Reserve toward the\nnext replacement")))
+    else:
+        layers += _end_labels(fund, "Year", "Balance", "Line", {"Fund": PLAN})
     for u in ups:
         c = pd.DataFrame({"y": [u["cost"]], "Year": [1], "t": [f"Year-{u['year']} upgrade {_usd(u['cost'])}"]})
         layers.append(alt.Chart(c).mark_rule(color=PLAN, strokeDash=[6, 4], opacity=0.6).encode(y="y:Q"))

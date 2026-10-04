@@ -1,7 +1,8 @@
 import streamlit as st
 from streamlit_folium import st_folium
 from components.layout import (PACIFIC_NOTE, PAGE_PLAN, PRESETS, apply_preset, fmt_coords, growth_label,
-                               growth_tuple, handle_map_result, in_pacific, init, island_map, run_plan,
+                               growth_tuple, handle_map_result, in_pacific, init, island_map, matching_preset,
+                               run_plan,
                                selected_marker, stretch)
 from sunsafe import config
 
@@ -20,8 +21,7 @@ def _coords_typed():
     s.lat, s.lon = float(s.lat_in), float(s.lon_in)
 
 
-if s.get("_preset_next"):                 # a preset marker clicked on the map last run
-    s.preset = s.pop("_preset_next")
+s.preset = matching_preset()              # the dropdown shows the preset the inputs match, else "—"
 st.selectbox("Pacific island preset", ["—"] + list(PRESETS), key="preset", on_change=_on_preset)
 st.caption("Validation = a Tokelau atoll with the inputs used to check the model against the real system. "
            "Illustrative = real coordinates with made-up diesel use (200-600 L/day); replace with your island's data.")
@@ -39,7 +39,7 @@ with L:
             st.rerun()
         st.markdown(f'<div class="ss-coords">Selected: <b>{fmt_coords(float(s.lat), float(s.lon))}</b></div>',
                     unsafe_allow_html=True)
-        st.caption("Click a purple preset to load it, or anywhere on the map to set the coordinates, then fine-tune "
+        st.caption("Click a grey preset marker to load it, or anywhere on the map to set the coordinates, then fine-tune "
                    "them on the right. Any coordinates work; solar data comes from NASA POWER.")
         if not in_pacific(s.lat, s.lon):
             st.markdown(f'<div class="notice">{PACIFIC_NOTE}</div>', unsafe_allow_html=True)

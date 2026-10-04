@@ -11,7 +11,7 @@ from dataclasses import asdict
 
 from sunsafe import config
 from sunsafe.interface import Inputs
-from utils.formatting import battery
+from utils.formatting import battery, short_strategy
 
 MODEL_IMPORT_ERROR = None
 try:
@@ -120,6 +120,20 @@ def in_pacific(lat, lon):
     return -30.0 <= lat <= 25.0 and (lon >= 130.0 or lon <= -120.0)
 
 
+def matching_preset():
+    """The preset whose values the form currently holds (the dropdown shows it), else the "—" option."""
+    s = st.session_state
+    for label, p in PRESETS.items():
+        load_ok = ((p["daily_load_kwh"] is None and not s.known_load) or
+                   (p["daily_load_kwh"] is not None and s.known_load and abs(float(s.load_kwh) - p["daily_load_kwh"]) < 1e-6))
+        if (s.site_name == p["name"] and abs(float(s.lat) - p["lat"]) < 1e-6 and abs(float(s.lon) - p["lon"]) < 1e-6
+                and abs(float(s.diesel_lpd) - p["diesel_litres_per_day"]) < 1e-6
+                and abs(float(s.price) - p["diesel_price"]) < 1e-6 and s.chem == p["chemistry"]
+                and int(s.target) == int(round(p["target"] * 100)) and load_ok):
+            return label
+    return "—"
+
+
 def norm_lon(lon):
     """Longitude in -180..180 (map clicks on a repeated world copy come back outside that range)."""
     return ((float(lon) + 180.0) % 360.0) - 180.0
@@ -141,10 +155,14 @@ def island_map():
     m = folium.Map(location=PACIFIC_CENTRE, zoom_start=3, world_copy_jump=True, prefer_canvas=True,
                    tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
                    attr="Tiles &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors", max_zoom=16)
+    # Open on the preset sites, measured eastward from 130E so the date line does not split them.
+    lats = [p["lat"] for p in PRESETS.values()]
+    lons = [p["lon"] + 360 if p["lon"] < 0 else p["lon"] for p in PRESETS.values()]
+    m.fit_bounds([[min(lats), min(lons)], [max(lats), max(lons)]], padding=(30, 30))
     for label, p in PRESETS.items():
         for shift in (-360, 0, 360):
-            folium.CircleMarker(location=(p["lat"], p["lon"] + shift), radius=7, weight=2, color="#5b4ea0",
-                                fill=True, fill_color="#7b6fb0", fill_opacity=0.9, bubbling_mouse_events=False,
+            folium.CircleMarker(location=(p["lat"], p["lon"] + shift), radius=6, weight=2, color="#4a4a4a",
+                                fill=True, fill_color="#8c8c8c", fill_opacity=0.9, bubbling_mouse_events=False,
                                 tooltip=f"{p['name']} · click to load").add_to(m)
     return m
 
@@ -181,8 +199,7 @@ def handle_map_result(result):
         s.map_last_click = clk      # a marker click is not also a map click
         label = _preset_at(float(obj["lat"]), float(obj["lng"]))
         if label:
-            s["_preset_next"] = label      # the dropdown takes it on the rerun, before it is drawn
-            apply_preset(PRESETS[label])
+            apply_preset(PRESETS[label])     # the dropdown follows on the rerun (matching_preset)
             return True
     if clk and clk != s.get("map_last_click"):
         s.map_last_click = clk
@@ -208,7 +225,7 @@ h1{font-size:1.9rem!important;font-weight:700!important;letter-spacing:-.01em;ma
 h3{font-size:1.15rem!important;margin:.6rem 0 .2rem!important}
 #MainMenu,footer,[data-testid="stDecoration"]{display:none!important}
 [data-testid="stSidebar"]{background:#f3f1ec}
-[data-testid="stCaptionContainer"],.stCaption{color:var(--muted)!important}
+[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] p,.stCaption{color:#57544e!important;opacity:1!important}
 [data-testid="stVerticalBlockBorderWrapper"]{background:var(--card);border-radius:14px}
 div[data-baseweb="input"],div[data-baseweb="input"] input,div[data-baseweb="select"]>div{background:#fff!important;color:var(--ink)!important;-webkit-text-fill-color:var(--ink)}
 .ss-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;padding:2px 0 12px;margin-bottom:10px;border-bottom:1px solid var(--line)}
@@ -223,9 +240,9 @@ div[data-baseweb="input"],div[data-baseweb="input"] input,div[data-baseweb="sele
 .ss-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:12px;margin:4px 0 14px}
 .card{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:#fff;margin-bottom:8px;box-sizing:border-box;white-space:normal;overflow-wrap:break-word;word-break:normal}
 .ss-grid .card{margin:0;height:100%}
-.card.out{border-top:4px solid var(--g)}.card.inp{border-top:4px solid #7b6fb0}
+.card.out{border-top:4px solid var(--g)}.card.inp{border-top:4px solid #c9c4b8}
 .card small,.tag{color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-size:.72rem;font-weight:600}
-.tag.inp{color:#7b6fb0}.tag.out{color:var(--g)}
+.tag.inp{color:var(--g)}.tag.out{color:var(--g)}
 .card h2{margin:6px 0 2px;color:var(--g);font-size:clamp(1.15rem,2.2vw,1.65rem);line-height:1.2;font-weight:700;padding:0}
 .card .sub{color:var(--muted);font-size:.9rem;margin-top:6px}
 .card ul{margin:8px 0 0;padding-left:18px;color:var(--ink);font-size:.92rem}
@@ -555,6 +572,22 @@ def usable_fraction(plan):
                     1 - config.BATTERY[plan["results"].inputs.battery_chemistry]["min_soc"])
 
 
+def plain_recommendation(plan):
+    """The recommended strategy in plain words: 'expand once, in year 9'."""
+    ups = plan["upgrade_years"]
+    years = " and ".join([", ".join(str(y) for y in ups[:-1]), str(ups[-1])]) if len(ups) > 1 else (
+        str(ups[0]) if ups else "")
+    return {"A": "build big, no upgrades",
+            "B": f"replace the battery once, in year {years}",
+            "C": f"expand once, in year {years}",
+            "D": f"expand in stages, in years {years}"}.get(plan["rec_letter"], short_strategy(plan["rec_name"]))
+
+
+def solar_share_text(share):
+    """'over 99% solar' when at least 99.5% (rounding would print 100%), else 'NN% solar'."""
+    return "over 99% solar" if share >= 0.995 else f"{share:.0%} solar"
+
+
 def describe_stage(stage, chemistry, usable):
     """One plain line for a later PlanStage; battery shown nominal and usable."""
     chem = chemistry.replace("_", "-")
@@ -563,4 +596,5 @@ def describe_stage(stage, chemistry, usable):
         what = f"add {stage.pv_added_kw:,.0f} kWp solar + new {chem} battery, {batt}"
     else:
         what = f"replace the {chem} battery, {batt}"
-    return f"Year {stage.year}: {what} (about ${stage.capex_usd / 1e6:,.2f}M)"
+    from components.charts import _usd     # same rounding as the chart titles ($668k, $1.31M)
+    return f"Year {stage.year}: {what} (about {_usd(stage.capex_usd)})"

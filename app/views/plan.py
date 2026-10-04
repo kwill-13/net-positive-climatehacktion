@@ -2,7 +2,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 from components import charts
 from components.layout import (PACIFIC_NOTE, PAGE_CHECKS, card, card_grid, card_html, describe_stage, in_pacific,
-                               download, init, require_plan, stretch, summary, usable_fraction)
+                               download, init, plain_recommendation, require_plan, solar_share_text, stretch, summary,
+                               usable_fraction)
 from exports.proposal import build_onepager, build_proposal
 from utils.formatting import battery, money, pct, short_strategy
 
@@ -42,12 +43,12 @@ later = (f" Later upgrades (year {', '.join(str(u.year) for u in upgrades[1:])})
          if len(upgrades) > 1 else "")
 card_grid([   # three equal cards; they stack in a narrow window
     card_html("Build now", f"{z.pv_kw:,.0f} kWp + {battery(z.battery_kwh, usable)}",
-              sub=f"Capex {money(z.capex_usd)} · {pct(z.renewable_share_year1)} solar in year 1"),
+              sub=f"Capex {charts._usd(z.capex_usd)} · {solar_share_text(z.renewable_share_year1)} in year 1"),
     upgrades_card,
-    card_html("Set aside per year", money(f.om_fund_per_year_usd),
+    card_html("Set aside per year", charts._usd(f.om_fund_per_year_usd),
               sub=f"Solar + battery O&M, plus saving toward the first upgrade{first}.{later}"),
 ])
-st.caption(f"Recommended: {short_strategy(plan['rec_name'])}. The lowest {n}-year cost plan that meets the target in every year.")
+st.caption(f"Recommended: {plain_recommendation(plan)}. The lowest {n}-year cost plan that meets the target in every year.")
 
 
 def show(builder):
