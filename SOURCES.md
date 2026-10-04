@@ -134,7 +134,7 @@ Dividing all-fuel spend by power-diesel volume overstates the diesel price.
   in 2013.
 - For 2026: the Apia retail range is USD 1.17-1.93/L, and Tokelau adds freight to that.
 
-**USD 2.70/L is therefore likely too high.** The model's breakeven is USD 2.34/L, so this
+**USD 2.70/L is therefore likely too high.** The model's breakeven is USD 2.42/L (validation case, 8%), so this
 decides the economic result. See Part 1b, item P1.
 
 **Applied 2026-10-03: the default is now USD 1.87/L.**
@@ -288,7 +288,7 @@ Found by reading IT Power (2013) and IRENA (2013), plus targeted searches.
 
 | ID | Item | Current | Evidence found | Suggestion |
 |---|---|---|---|---|
-| P1 (**applied**: default now USD 1.87/L; scenarios 1.22 / 2.70) | Diesel price (Tokelau) | was USD 2.70/L | Landed 2013: NZD 1.16 / 1.52 / >2.00 per L; ITP used NZD 1.50 (IT Power 2013, pp. 28-29) = USD ~1.22. Apia retail 2026: USD 1.17-1.93. The 2.70 derivation divides all-fuel spend by diesel volume (item 5) | Re-derive. Use a sourced delivered price for 2026 (Apia retail plus freight) and keep 2.70 as a high scenario. **This decides solar vs diesel:** breakeven is USD 2.34/L |
+| P1 (**applied**: default now USD 1.87/L; scenarios 1.22 / 2.70) | Diesel price (Tokelau) | was USD 2.70/L | Landed 2013: NZD 1.16 / 1.52 / >2.00 per L; ITP used NZD 1.50 (IT Power 2013, pp. 28-29) = USD ~1.22. Apia retail 2026: USD 1.17-1.93. The 2.70 derivation divides all-fuel spend by diesel volume (item 5) | Re-derive. Use a sourced delivered price for 2026 (Apia retail plus freight) and keep 2.70 as a high scenario. **This decides solar vs diesel:** breakeven is USD 2.42/L |
 | P2 (**applied** as a range: 2,500 default, 4,000 high case) | PV capex | USD 2,500/kW (TODO) | Tokelau 2012 back-calculation: USD 6.95M total (IRENA 2013) minus ~USD 3.0-3.2M batteries (P3) over 891 kWp = **~USD 4,200-4,400/kWp** including inverters, BOS and install. Tokelau 2020 (RNZ): USD 2,500-3,300/kWp, depending on the Li-ion price assumed. Tuvalu 2024: USD 6M for 500 kW + 2 MWh (pv magazine), project-level. Global utility average: USD 691/kW (IRENA 2024) | Keep 2,500 as the low case and add ~4,000 as a remote-atoll high case. Mark sourced as a range |
 | P3 | Lead-acid capex | USD 350/kWh (TODO) | ITP's battery replacement estimate: NZD 3.75-4.0M (IT Power 2013, pp. 27, 32) for 8,602 kWh = NZD 436-465/kWh = **USD 353-377/kWh** (2013) | Keep 350 and mark it sourced |
 | P4 | Lead-acid life | 8 yrs (sourced) | ITP's tariff model also uses 8 yrs (IT Power 2013, p. 27). Replaced after ~8 yrs (RNZ 2020) | No change; add the citation |
@@ -307,11 +307,12 @@ Found by reading IT Power (2013) and IRENA (2013), plus targeted searches.
 - **V1 (applied 2026-10-03). Battery comparison is not like for like.** The app's validation table and
   `run_tokelau.py` compare the model's *nominal* battery with Source A, which is
   effectively *usable*.
-  - With the 2026-10-03 assumptions (9% growth, 3% fade, staged expansion), the recommended
-    first build is 363 kWp / 1,612 kWh nominal. That is 1.10x Fakaofo's PV and 0.48x its
-    battery.
-  - The recommended year-9 upgrade (+332 kWp, a new ~2.9 MWh battery) resembles the actual
-    2020 upgrade: +210 kWp and ~2 MWh of Li-ion per atoll (RNZ 2020).
+  - With the current engine (9% growth, 3% fade, all four strategies; updated 2026-10-04), the
+    recommended first build is 305 kWp / 1,277 kWh nominal (638 usable). That is 0.93x Fakaofo's
+    PV and 0.38x its battery.
+  - The recommended first upgrade, in year 7 (+219 kWp, a new 2,141 kWh battery), is about the size
+    of the actual 2020 upgrade, +210 kWp and ~2 MWh of Li-ion per atoll (RNZ 2020), but ~2 years
+    earlier. A second upgrade follows in year 13.
   - Before the growth change (3%), it was 315 kWp / 1,481 kWh: 0.95x PV and 0.44x battery.
   - Now both the app table and `run_tokelau.py` compare nominal with nominal and usable with
     usable, per atoll.

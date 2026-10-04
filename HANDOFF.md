@@ -82,11 +82,11 @@ Now sourced:
 - **Discount rate:** 8%, with 6% as a sensitivity case.
 
 **Diesel price drives the result.**
-- **At the sourced default USD 1.87/L and 9% growth:** the recommended staged expansion costs
-  $0.86/kWh vs $0.66/kWh for diesel-only, with a 14.2-yr payback.
-- **Breakeven:** USD 2.48/L (8%) or 2.27/L (6%).
-- **Staged expansion:** build for ~year 8, then upgrade, as Tokelau did in 2012 and 2020. It is
-  ~26% cheaper over 15 years than building big for year 15.
+- **At the sourced default USD 1.87/L and 9% growth:** the recommended rolling plan costs
+  $0.84/kWh vs $0.66/kWh for diesel-only, with a 10.9-yr simple payback on the first build.
+- **Breakeven:** USD 2.42/L (8%) or 2.25/L (6%).
+- **Staged investment:** build smaller, then add PV and a new battery in years 7 and 13 (Tokelau
+  built in 2012 and upgraded in 2020). It is 27% cheaper over 15 years than building big for year 15.
 - **For the pitch:** this is a price-risk case (see the fuel shock), not a guaranteed saving.
 
 **Demo checklist.** These are app-side changes. Items were checked
@@ -127,18 +127,19 @@ Housekeeping:
   only, or use `git` from the command line.
 
 **Reference numbers** for the Fakaofo demo: 600 kWh/day, lead-acid, 95% target,
-USD 1.87/L, 9%/yr growth (from `python scripts/run_tokelau.py`):
-- **Recommended:** C, staged expansion. Build 363 kWp / 1,612 kWh; in year 9 add 332 kWp and a
-  new 2,858 kWh battery.
-- **Cost:** capex ~$1.47M; $0.86/kWh hybrid vs $0.66/kWh diesel-only; payback 14.2 yrs;
-  breakeven diesel price $2.48/L (8%) or $2.27/L (6%).
-- **Strategy:** NPV $2.80M, vs $3.76M for building big (26% cheaper) and $3.46M for the best
-  same-size replacement.
+USD 1.87/L, constant 9%/yr growth, 15 years, all four strategies (from `python scripts/run_tokelau.py`;
+page 3 of the app shows the same table):
+- **Recommended:** D, rolling plan with 6-yr stages. Build 305 kWp / 1,277 kWh (638 usable); year 7
+  add 219 kWp and a new 2,141 kWh battery; year 13 add 139 kWp and a new 2,664 kWh battery.
+- **Cost:** capex ~$1.21M; $0.84/kWh hybrid vs $0.66/kWh diesel-only; simple payback 10.9 yrs on
+  the first build; breakeven diesel price $2.42/L (8%) or $2.25/L (6%).
+- **Strategy:** NPV $2.74M, vs $3.76M for building big (27% cheaper); best C $2.80M, best B $3.46M.
 - **Validation:**
-  - First build against Fakaofo's real system (IRENA 2013: 330 kWp / 3,379 kWh nominal): PV
-    1.10x, battery 0.48x.
-  - The year-9 upgrade (+332 kWp, ~2.9 MWh) resembles Tokelau's 2020 upgrade (+210 kWp,
-    ~2 MWh Li-ion).
+  - First build against Fakaofo's real system (IRENA 2013: 330 kWp / 3,379 kWh nominal, 1,690
+    usable): PV 0.93x, battery 0.38x.
+  - The year-7 upgrade (+219 kWp, new 2,141 kWh) is about the size of Tokelau's 2020 upgrade
+    (+210 kWp, ~2 MWh Li-ion: PV 1.04x, battery 1.07x), but comes ~2 years earlier (after 6 years
+    vs ~8).
   - The real system, modelled with 9% growth, drops below 95% in year 9. It was actually
     upgraded after ~8 yrs.
   - 2013 solar fraction: model 95-97% vs 92.5-93.5% measured.
@@ -161,10 +162,10 @@ USD 1.87/L, 9%/yr growth (from `python scripts/run_tokelau.py`):
     `steady_rate`, and a test checks this.
   - `Inputs` still carries only a constant `demand_growth_per_year`. Scripts pass a schedule with
     `run_sunsafe_detailed(inputs, growth=GrowthSchedule(0.09, 5, 0.03))`.
-- **Effect on the app demo:** the app runs A-D. For the Fakaofo preset (9%/yr constant growth,
-  15 years) it now recommends **D, 6-yr stages** (upgrades in years 7 and 13), NPV $2.74M, vs
-  $2.80M for C. The validation script (`scripts/run_tokelau.py`) is pinned to A/B/C
-  (`rolling_stage_years=()`), so the reference numbers below are unchanged.
+- **Everything runs A-D:** the app, `scripts/run_tokelau.py` and page 3's validation table. With
+  constant 9%/yr growth the Fakaofo validation case recommends **D, 6-yr stages** (upgrades in years
+  7 and 13), NPV $2.74M. With the app's default growth (9% for 5 years, then 3%) the Fakaofo preset
+  recommends C, one upgrade in year 9.
 - **Site presets:** `config.SITE_PRESETS` is one list of sites for scripts and the app. It holds the
   three Tokelau atolls (validation settings) and 5 **illustrative** Pacific sites:
   - Abaiang, Kiribati; Lifuka, Tonga; Tanna, Vanuatu; Aitutaki, Cook Islands; Jaluit, Marshall Islands.
@@ -203,10 +204,9 @@ python scripts/run_tokelau.py
 It works from any directory and takes ~45 s. It prints five sections:
 1. Year-1 cost-optimal sizing vs the real 2012 install.
 2. Target x design-year table.
-3. 15-year decline of the year-1 optimum vs the real 300 kWp / 1,350 kWh system.
-4. Strategy A (build big) vs B (same-size battery replacement) vs C (staged expansion), with the recommended
-   system's lifecycle curves. D (rolling plan) is left out here to keep the published numbers;
-   `scripts/run_pacific_presets.py` reports it.
+3. 15-year decline of the year-1 optimum vs the real 330 kWp / 3,379 kWh system.
+4. Strategies A (build big), B (same-size battery replacement), C (staged expansion) and D (rolling
+   plan); the recommended plan vs Fakaofo's real 2012 system and 2020 upgrade; its lifecycle curves.
 5. The real system's decline at battery fade 0.03 / 0.04 / 0.06 / 0.08, and the first year it
    drops below 95% at each.
 6. Diesel price x discount rate, including a PV USD 4,000/kW high case.

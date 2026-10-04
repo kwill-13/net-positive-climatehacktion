@@ -18,55 +18,60 @@ st.markdown(
     "Tokelau's three atolls each got a solar + lead-acid battery mini-grid in 2012, demand then grew "
     "about 9% a year, and the systems were upgraded with new solar and lithium batteries in 2020. "
     "SunSafe was **not tuned** to these numbers; we report the gaps.")
-st.table({
-    "Check": ["Sizing: Fakaofo first build",
-              "Timing: when the real system falls below 95%",
-              "Upgrade size",
-              "Measured solar share, Nov 2012-May 2013"],
-    "Real system": ["330 kWp / 3,379 kWh nominal (IRENA 2013)",
-                    "Upgraded after ~8 years (2020)",
-                    "+210 kWp and ~2 MWh lithium (2020)",
-                    "Atafu 92.5%, Nukunonu 93.5%"],
-    "SunSafe": ["363 kWp / 1,612 kWh: PV 1.10x, battery 0.48x",
-                "Drops below 95% in year 9 (600 kWh/day, 9%/yr growth)",
-                "Year 9: +332 kWp and a new 2,858 kWh battery",
-                "Atafu 96.4-97.1%, Nukunonu 94.8-96.1%"],
-    "What it means": ["PV close; battery smaller because the plan upgrades later instead of oversizing",
-                      "Upgrade timing matches reality within a year",
-                      "Same order of magnitude and the same staged pattern",
-                      "Model is 1-4 points optimistic (outages, shading, generator charging not modelled)"],
-})
-st.caption("Validation case: Fakaofo, 600 kWh/day, lead-acid, 95% target, USD 1.87/L, constant 9%/yr growth, "
-           "strategies A-C (`python scripts/run_tokelau.py`). Sizes: IRENA (2013) Table 2; measured solar share "
-           "and 2020 upgrade: IT Power (2013), RNZ (2020). See SOURCES.md.")
-
-# Same validation inputs through the current engine (strategies A-D), cached: a few seconds on the first visit.
-# Published column = scripts/run_tokelau.py section 4 (A-C only), fixed so the published numbers stay as reported.
-with st.spinner("Running the validation inputs through the current engine (first visit only)..."):
+# The validation case (scripts/run_tokelau.py inputs) through the current engine, all four strategies.
+# Cached: a few seconds on the first visit, instant after. Same numbers as the script's section 4.
+REAL_2012 = (330, 3379)                                          # Fakaofo, kWp / kWh nominal [IRENA 2013]
+REAL_2020 = dict(pv_kw=210, battery_kwh=2000, after_years=8)     # +210 kWp, ~2 MWh Li-ion [RNZ 2020]
+with st.spinner("Running the validation case through the engine (first visit only)..."):
     val = run_validation_case()
-if val:
+if val is None:
+    st.error(f"The validation case could not run: {s.model_error}")
+else:
     vr, vu = val["results"], usable_fraction(val)
-    later = vr.plan_stages[1:]
-    best = {x["letter"]: x for x in val["strategies"]}
-    rec_npv = next(x["npv"] for x in val["strategies"] if x["recommended"])
-    upgrades = "; ".join(f"yr {u.year}: +{u.pv_added_kw:,.0f} kWp, new {battery(u.battery_installed_kwh, vu)}"
-                         for u in later) or "none"
-    st.markdown("**Same inputs, current engine.** The table above is the published A-C validation; the right-hand "
-                "column runs the same inputs through today's engine with all four strategies.")
-    st.table({
-        "": ["Recommended", "First build", "Upgrades", "15-year cost (NPV, 8%)"],
-        "Published (strategies A-C)": ["C: expand in year 9", f"363 kWp + {battery(1612, 0.5)}",
-                                       f"yr 9: +332 kWp, new {battery(2858, 0.5)}", "$2.80M"],
-        "Current engine (strategies A-D)": [short_strategy(val["rec_name"]),
-                                            f"{vr.sizing.pv_kw:,.0f} kWp + {battery(vr.sizing.battery_kwh, vu)}",
-                                            upgrades, f"${rec_npv / 1e6:,.2f}M"],
-    })
-    c_npv = best.get("C", {}).get("npv")
-    st.caption("Why they differ: the published check compares three strategies (A build big, B replace once, "
-               "C expand once); the current engine adds D, expanding in stages, which finds a cheaper plan for "
-               "these inputs"
-               + (f" (best C here: ${c_npv / 1e6:,.2f}M, matching the published figure)." if c_npv else ".")
-               + " The sizing and timing checks above use the published A-C result.")
+    first, *later = vr.plan_stages
+    pv_r, nom_r = REAL_2012
+    usable_r = nom_r * 0.5                                       # lead-acid designed for 50% depth of discharge
+    big = next(x for x in val["strategies"] if x["letter"] == "A")
+    rec = next(x for x in val["strategies"] if x["recommended"])
+    if later:
+        u = later[0]
+        up_model = (f"Year {u.year} (after {u.year - 1} yrs): +{u.pv_added_kw:,.0f} kWp, new "
+                    f"{battery(u.battery_installed_kwh, vu)}: PV {u.pv_added_kw / REAL_2020['pv_kw']:.2f}x, battery "
+                    f"{u.battery_installed_kwh / REAL_2020['battery_kwh']:.2f}x")
+        gap = (u.year - 1) - REAL_2020["after_years"]
+        up_meaning = ("Same timing as the real upgrade" if gap == 0 else
+                      f"{abs(gap)} yr{'s' if abs(gap) > 1 else ''} {'earlier' if gap < 0 else 'later'} than the real "
+                      "upgrade: the cheapest plan builds smaller and upgrades sooner") + "; similar size added"
+    else:
+        up_model, up_meaning = "No upgrade in the plan", "The real system was upgraded after ~8 years"
+    rows = [
+        ("First build", f"{pv_r} kWp / {battery(nom_r, 0.5)} (2012, IRENA 2013)",
+         f"{first.pv_added_kw:,.0f} kWp / {battery(first.battery_installed_kwh, vu)}: PV "
+         f"{first.pv_added_kw / pv_r:.2f}x, battery {first.battery_installed_kwh / nom_r:.2f}x",
+         "PV close; battery smaller because the plan adds a new battery at each upgrade instead of oversizing"),
+        ("First upgrade", "+210 kWp and ~2 MWh Li-ion after ~8 years (2020, RNZ)", up_model, up_meaning),
+    ]
+    for u in later[1:]:
+        rows.append((f"Later upgrade", "No later upgrade on record",
+                     f"Year {u.year}: +{u.pv_added_kw:,.0f} kWp, new {battery(u.battery_installed_kwh, vu)}",
+                     "Planned; nothing real to compare yet"))
+    rows += [
+        ("When the real system falls below 95%", "Upgraded after ~8 years (2020)",
+         "The real 2012 system, modelled: below 95% in year 9", "Matches the real need to upgrade within a year"),
+        ("Measured solar share, Nov 2012-May 2013", "Atafu 92.5%, Nukunonu 93.5%",
+         "Atafu 96.4-97.1%, Nukunonu 94.8-96.1%",
+         "Model is 1-4 points optimistic (outages, shading, generator charging not modelled)"),
+        ("15-year cost (NPV, 8%)", "Not reported",
+         # "USD", not "$": two $ signs in one cell render as a LaTeX formula
+         f"{short_strategy(val['rec_name'])}: USD {rec['npv'] / 1e6:,.2f}M vs USD {big['npv'] / 1e6:,.2f}M building big",
+         f"{1 - rec['npv'] / big['npv']:.0%} cheaper than sizing for year 15 on day one"),
+    ]
+    st.table({"Check": [r[0] for r in rows], "Real system": [r[1] for r in rows],
+              "SunSafe": [r[2] for r in rows], "What it means": [r[3] for r in rows]})
+st.caption("Validation case: Fakaofo, 600 kWh/day, lead-acid, 95% renewable every year, USD 1.87/L, constant "
+           "9%/yr growth, 15 years (same as `python scripts/run_tokelau.py`). The \"falls below 95%\" and measured solar "
+           "share checks use the real system, so they do not depend on the plan. Sizes: IRENA (2013) Table 2; measured solar share: IT Power (2013); 2020 upgrade: RNZ (2020). "
+           "See SOURCES.md.")
 
 # Live comparison when the current plan is for a Tokelau atoll.
 REAL = {"fakaofo": (330, 3379), "atafu": (297, 2765), "nukunonu": (264, 2458)}   # kWp, kWh nominal
@@ -114,9 +119,7 @@ if sens.exists():
         st.markdown(findings.group(1))
     with st.expander("Full sensitivity tables"):
         body = text.split("## Findings", 1)[-1]
-        body = body[body.find("## 1."):] if "## 1." in body else body
-        # 1.37 is not the app's low scenario (1.22, 2013 landed): say where it comes from.
-        st.markdown(body.replace("| 1.37 |", "| 1.37 (pre-shock 2026 Apia price x1.25 freight) |"))
+        st.markdown(body[body.find("## 1."):] if "## 1." in body else body)
 else:
     st.info("docs/sensitivity.md not found.")
 

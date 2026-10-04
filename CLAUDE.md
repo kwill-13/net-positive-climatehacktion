@@ -42,7 +42,7 @@ work in year 15, and turns the plan into a funding case.
   curve (USD 1.00-3.50/L) reuses the one run: the plan is fixed and costs are linear in diesel price.
 - Default diesel price is USD 1.87/L (`config.TOKELAU_DIESEL_PRICE_USD_PER_L`): the Apia 2026 average,
   x1.25 freight to Tokelau (SOURCES.md P1). Scenarios: low 1.22 (2013 landed), high 2.70 (the old
-  all-fuel derivation). Below USD 2.34/L (8%) or 2.11/L (6%), diesel-only is cheaper per kWh, and
+  all-fuel derivation). Below USD 2.42/L (8%) or 2.25/L (6%), diesel-only is cheaper per kWh, and
   that includes the default.
 - Non-Pacific coordinates get a note that defaults (freight, growth) are set for Pacific islands. Sites
   other than the Tokelau atolls link "Planning estimate. Engine checked against Tokelau's measured
@@ -52,23 +52,21 @@ work in year 15, and turns the plan into a funding case.
 
 ## Reference run (Fakaofo, 600 kWh/day, lead-acid, 95%, USD 1.87/L)
 
-Assumes 9%/yr demand growth and 3%/yr lead-acid fade (both Tokelau-derived).
+Assumes 9%/yr demand growth (constant) and 3%/yr lead-acid fade (both Tokelau-derived), 15 years.
 Strategies: A build big, B same-size replacement, C staged expansion, D rolling plan (stages of
-6/8/10 yrs, new battery + added PV each stage). The figures below are from `scripts/run_tokelau.py`,
-which compares A/B/C only. The app runs A-D: for this preset it recommends **D, 6-yr stages**
-(upgrades in years 7 and 13), NPV USD 2.74M vs 2.80M for C. With growth 9% for 5 yrs then 3%,
-C wins at 15 yrs and D at 20-25 yrs (`scripts/run_pacific_presets.py`).
-- **Recommended: staged expansion (C).** Build 363 kWp / 1,612 kWh (capex ~USD 1.47M). In year 9,
-  add 332 kWp and a new 2,858 kWh battery.
-  - This matches what Tokelau actually did: built in 2012, then in 2020 (~year 8) added 210 kWp
-    and ~2 MWh of Li-ion.
-- **Strategy:** NPV USD 2.80M vs 3.76M for building big (~26% cheaper) and 3.46M for the best
-  same-size replacement (~19% cheaper).
-- **Cost per kWh:** at USD 1.87/L the hybrid costs $0.86/kWh vs $0.66/kWh diesel-only. Breakeven is
-  USD 2.48/L (8%); simple payback 14.2 yrs.
-- **Validation** (real 2012 systems, IRENA 2013; nominal vs nominal):
-  - The first build vs Fakaofo's 330 kWp / 3,379 kWh: PV 1.10x, battery 0.48x (0.48x usable too).
-    The year-1 optimum (184 kWp / 750 kWh) is 0.56x / 0.22x.
+6/8/10 yrs, new battery + added PV each stage). All figures are from `scripts/run_tokelau.py`, which
+runs all four strategies, the same as the app (page 3 shows the same validation table).
+- **Recommended: D, rolling plan, 6-yr stages.** Build 305 kWp / 1,277 kWh (638 kWh usable; capex
+  ~USD 1.21M). Year 7: +219 kWp and a new 2,141 kWh battery. Year 13: +139 kWp and a new 2,664 kWh battery.
+  - Tokelau built in 2012 and upgraded in 2020, after ~8 years: +210 kWp and ~2 MWh of Li-ion. The
+    plan's first upgrade is a similar size (PV 1.04x, battery 1.07x) but ~2 years earlier, because the
+    cheapest plan builds smaller and upgrades sooner.
+- **Strategy:** NPV USD 2.74M vs 3.76M for building big (27% cheaper); best C 2.80M, best B 3.46M.
+- **Cost per kWh:** at USD 1.87/L the hybrid costs $0.84/kWh vs $0.66/kWh diesel-only. Breakeven is
+  USD 2.42/L (8%) or 2.25/L (6%); simple payback on the first build 10.9 yrs (upgrades not included).
+- **Validation** (real 2012 systems, IRENA 2013):
+  - The first build vs Fakaofo's 330 kWp / 3,379 kWh nominal (1,690 usable): PV 0.93x, battery 0.38x
+    (nominal and usable). The year-1 optimum (184 kWp / 750 kWh) is 0.56x / 0.22x.
   - The real system (330 / 3,379) at 600 kWh/day with 9% growth first drops below 95% in year 9
     (year 7 at 720), matching its actual upgrade after ~8 yrs.
   - Measured 2013 solar fraction: model 96-97% (Atafu) / 95-96% (Nukunonu) on actual 2012-13

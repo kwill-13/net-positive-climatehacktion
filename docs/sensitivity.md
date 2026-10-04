@@ -22,7 +22,7 @@ Analysis only. No model defaults were changed. To reproduce the tables below, ru
    - This uses the measured figure: NZD 12,000/yr per atoll, about 5-6x less than the config rates.
    - At the default USD 1.87/L, diesel-only is still cheaper per kWh over the full life cost.
 3. **If donors fund the first build,** the island pays about USD 0.47/kWh with the hybrid,
-   against USD 0.50-0.87/kWh for diesel only.
+   against USD 0.50-0.85/kWh for diesel only.
    - The hybrid is cheaper for the island at any diesel price above USD 1.28/L.
    - It barely depends on diesel price: about 95% of the energy is solar.
    - The island's cost is mostly O&M and the later upgrades (years 7 and 13).
@@ -54,9 +54,9 @@ Plan: D: rolling plan, 6-yr stages (upgrades in years 7, 13); build 305 kWp / 1,
 
 | Diesel USD/L | Island-paid hybrid USD/kWh | Full hybrid USD/kWh | Diesel-only USD/kWh |
 |---:|---:|---:|---:|
-| 1.37 | 0.467 | 0.840 | 0.497 |
-| 1.87 | 0.470 | 0.843 | 0.663 |
-| 2.48 | 0.475 | 0.847 | 0.867 |
+| 1.37 (pre-shock 2026 Apia price x1.25 freight) | 0.467 | 0.840 | 0.497 |
+| 1.87 (default) | 0.470 | 0.843 | 0.663 |
+| 2.42 (full-cost breakeven) | 0.474 | 0.847 | 0.847 |
 
 Island-paid = O&M + later stages (upgrades) + generator fuel and O&M, NPV / discounted kWh at 8%. Breakeven diesel price: island-paid USD 1.28/L, full cost USD 2.42/L. Plan fixed at the USD 1.87/L recommendation, current O&M.
 
@@ -74,7 +74,9 @@ Island-paid = O&M + later stages (upgrades) + generator fuel and O&M, NPV / disc
   - Generator fuel and O&M.
 
   It is not a tariff. It assumes the upgrades happen on time and that the island funds them.
-- **USD 2.48/L** is the breakeven price for the A/B/C-only validation case (C, from
-  `scripts/run_tokelau.py`). With D, the breakeven at default O&M is USD 2.42/L.
+- **The three diesel prices:** USD 1.37/L is the March 2026 (pre-shock) Apia retail price x1.25 freight,
+  not the app's low scenario (USD 1.22/L, the 2013 landed price). USD 1.87/L is the default. USD 2.42/L is
+  the validation case's full-cost breakeven (`scripts/run_tokelau.py` section 6), where the full hybrid
+  and diesel-only costs are equal.
 - **Other inputs:** the load shape, PV capex and fade rates are as in `sunsafe/config.py`. Known
   limitations are listed in `CLAUDE.md`.

@@ -9,8 +9,8 @@ Sections:
   1. Year-1 cost-optimal sizing at the base target.
   2. Sensitivity table: renewable target x design year (size for faded battery + grown load).
   3. 15-year forward run of the year-1 optimal system vs the real installed system.
-  4. Strategy A (build big) vs B (moderate + planned replacement), and the recommended
-     system's two lifecycle curves (with vs without its planned replacement).
+  4. Strategies A (build big), B (planned replacement), C (staged expansion) and D (rolling plan);
+     the recommended plan vs Fakaofo's real 2012 system and 2020 upgrade; its lifecycle curves.
   5. The real system's 15-year decline at battery fade 0.04 / 0.06 / 0.08, and the first
      year it drops below the target at each.
   6. Diesel price x discount rate: hybrid vs diesel-only USD/kWh, payback, breakeven price.
@@ -79,6 +79,8 @@ ATOLL_DAILY_KWH = 600
 TOKELAU_2012_CAPEX_NZD = 7.0e6           # NZ advance
 TOKELAU_2012_TOTAL_COST_NZD = 8.5e6      # total project cost
 TOKELAU_REPORTED_PAYBACK_YEARS = 9
+# Tokelau's 2020 upgrade [RNZ20; SOURCES.md]: +210 kWp and ~2 MWh of Li-ion, after ~8 years of operation.
+REAL_2020_UPGRADE = dict(pv_kw=210.0, battery_kwh=2000.0, after_years=8)
 ITP_SOLAR_OM_NZD_PER_ATOLL = 12_000    # solar O&M per atoll per year, excl. replacements [IT Power 2013 p.31]
 
 # Measured operation, 1 Nov 2012 - 31 May 2013 (211 days), from SD-card logs [IT Power 2013,
@@ -185,25 +187,56 @@ def _detailed(site, lat, lon, daily):
                     renewable_target=TARGET, battery_chemistry=CHEMISTRY,
                     project_years=FORWARD_YEARS,
                     demand_growth_per_year=config.DEMAND_GROWTH_PER_YEAR)
-    # Strategy D (rolling plan) is left out here so the validation numbers stay as published
-    # (A/B/C only); scripts/run_pacific_presets.py reports D.
-    return run_sunsafe_detailed(inputs, rolling_stage_years=())
+    return run_sunsafe_detailed(inputs)          # all four strategies, as the app runs them
 
 
-def _econ(design, price, rate=config.DISCOUNT_RATE, capex=None, replacement=None):
+def _econ(design, price, rate=config.DISCOUNT_RATE, capex=None, replacement=None, extra=None):
     """Economics of a Strategy (fixed design) at a diesel price and discount rate.
 
-    capex / replacement override the up-front and replacement/upgrade costs (e.g. high PV cost).
+    capex / replacement / extra override the up-front cost, the first reinvestment and any later
+    stages [(year, USD)] (e.g. the high PV cost case). Later stages default to the plan's own.
     """
     return fin.economics(design.capex_usd if capex is None else capex, design.om_by_year,
                          [y.load_kwh for y in design.years], [y.gen_kwh for y in design.years],
                          price, design.replacement_year,
-                         design.replacement_usd if replacement is None else replacement, rate)
+                         design.replacement_usd if replacement is None else replacement, rate,
+                         extra_costs=design.extra_investments if extra is None else extra)
+
+
+def _validation_vs_real(res, comp):
+    """The recommended plan vs Fakaofo's real 2012 system and 2020 upgrade."""
+    usable_model = 1 - config.BATTERY[CHEMISTRY]["min_soc"]
+    first, *later = res.plan_stages
+    pv_r, batt_r = REAL_SYSTEM
+    usable_r = batt_r * REAL_USABLE_FRACTION
+    up = REAL_2020_UPGRADE
+    big = next(c for c in comp.candidates if c.name.startswith("A"))
+    rec = comp.recommended
+    print(f"\n  Validation: recommended plan vs Fakaofo's real systems")
+    print(f"    First build: {first.pv_added_kw:,.0f} kWp / {first.battery_installed_kwh:,.0f} kWh nominal "
+          f"({first.battery_installed_kwh * usable_model:,.0f} usable) vs real 2012 {pv_r:,.0f} kWp / "
+          f"{batt_r:,.0f} kWh nominal ({usable_r:,.0f} usable): PV {first.pv_added_kw / pv_r:.2f}x, "
+          f"battery {first.battery_installed_kwh / batt_r:.2f}x nominal, "
+          f"{first.battery_installed_kwh * usable_model / usable_r:.2f}x usable")
+    for k, st in enumerate(later):
+        line = (f"    Upgrade, year {st.year} (after {st.year - 1} yrs): +{st.pv_added_kw:,.0f} kWp, new {st.battery_installed_kwh:,.0f} kWh "
+                f"({st.battery_installed_kwh * usable_model:,.0f} usable), ${st.capex_usd:,.0f}")
+        if k == 0:
+            line += (f" | vs real 2020 upgrade after ~{up['after_years']} yrs: +{up['pv_kw']:.0f} kWp, "
+                     f"~{up['battery_kwh'] / 1000:.0f} MWh Li-ion: PV {st.pv_added_kw / up['pv_kw']:.2f}x, "
+                     f"battery {st.battery_installed_kwh / up['battery_kwh']:.2f}x")
+        else:
+            line += " | no later real upgrade on record to compare"
+        print(line)
+    if not later:
+        print("    No upgrade in the plan (the real system was upgraded after ~8 yrs)")
+    print(f"    {FORWARD_YEARS}-year NPV: ${rec.npv_usd:,.0f} vs ${big.npv_usd:,.0f} for building big "
+          f"({1 - rec.npv_usd / big.npv_usd:.0%} cheaper)")
 
 
 def strategy_comparison(pv_per_kw):
     """Section 4: A vs B over the project, and the recommended system's lifecycle curves."""
-    _header(f"4. STRATEGY: A build big / B planned replacement / C staged expansion ({CHEMISTRY}, target "
+    _header(f"4. STRATEGY: A build big / B planned replacement / C staged expansion / D rolling plan ({CHEMISTRY}, target "
             f"{TARGET:.0%} EVERY year, {FORWARD_YEARS} yrs, NPV at "
             f"{config.PROJECT_DISCOUNT_RATE:.0%})")
     for daily in DAILY_LOADS_KWH:
@@ -222,6 +255,7 @@ def strategy_comparison(pv_per_kw):
                   f"{str(c.meets_target_every_year):>5}{mark}")
         y1 = comp.year1_optimal
         print(f"  (report only) year-1 cost-optimal: {y1.pv_kw:.0f} kWp / {y1.battery_kwh:.0f} kWh")
+        _validation_vs_real(res, comp)
         f = res.finance
         print(f"  Recommended: capex ${res.sizing.capex_usd:,.0f} | hybrid ${f.cost_per_kwh_hybrid_usd}"
               f"/kWh vs diesel ${f.cost_per_kwh_diesel_usd}/kWh | payback {f.payback_years} yrs")
@@ -275,19 +309,21 @@ def price_sensitivity():
             print(f"  {p:>6.2f} | " + " ".join(f"{v:>11.3f}" for v in vals)
                   + f" | {('never' if pb == float('inf') else f'{pb:.1f}'):>11}")
         d_pv = config.PV_COST_USD_PER_KW_HIGH - config.PV_COST_USD_PER_KW
+        # High case: every stage's added PV at the high price (first build, first upgrade, later stages).
         capex_high = rec.capex_usd + rec.pv_kw * d_pv
-        repl_high = rec.replacement_usd + ((rec.upgrade_pv_kw - rec.pv_kw) * d_pv
-                                           if rec.upgrade_pv_kw is not None else 0.0)
-        for capex, repl, label in ((None, None, f"PV USD {config.PV_COST_USD_PER_KW:,.0f}/kW"),
-                                   (capex_high, repl_high,
-                                    f"PV USD {config.PV_COST_USD_PER_KW_HIGH:,.0f}/kW (high case)")):
-          e = _econ(rec, DIESEL_PRICE, capex=capex, replacement=repl)
+        later_high = [(st.year, st.capex_usd + st.pv_added_kw * d_pv) for st in rec.stages[1:]]
+        repl_high = later_high[0][1] if later_high else 0.0
+        extra_high = later_high[1:]
+        for capex, repl, extra, label in ((None, None, None, f"PV USD {config.PV_COST_USD_PER_KW:,.0f}/kW"),
+                                          (capex_high, repl_high, extra_high,
+                                           f"PV USD {config.PV_COST_USD_PER_KW_HIGH:,.0f}/kW (high case)")):
+          e = _econ(rec, DIESEL_PRICE, capex=capex, replacement=repl, extra=extra)
           print(f"  {label}: capex ${capex if capex else rec.capex_usd:,.0f} | at USD {DIESEL_PRICE:.2f}/L "
                 f"hybrid ${e.cost_per_kwh_hybrid_usd:.3f}/kWh vs diesel ${e.cost_per_kwh_diesel_usd:.3f} | "
                 f"payback {_yrs(e.payback_years)}")
           for r in DISCOUNT_RATES:
             # Both levelised costs are linear in diesel price, so solve the crossing exactly.
-            lo, hi = _econ(rec, 1.0, r, capex, repl), _econ(rec, 2.0, r, capex, repl)
+            lo, hi = _econ(rec, 1.0, r, capex, repl, extra), _econ(rec, 2.0, r, capex, repl, extra)
             gap_lo = lo.cost_per_kwh_hybrid_usd - lo.cost_per_kwh_diesel_usd
             gap_hi = hi.cost_per_kwh_hybrid_usd - hi.cost_per_kwh_diesel_usd
             slope = gap_hi - gap_lo

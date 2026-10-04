@@ -11,7 +11,7 @@ Case: Fakaofo, 600 kWh/day, lead-acid, 95% renewable every year, USD 1.87/L, 8% 
   2. Solar + battery O&M: config values vs Tokelau-measured (NZD 12,000/yr per atoll,
      IT Power 2013 p.31), split PV/battery pro rata to capex.
   3. Island-paid cost "if donors fund the first build": hybrid USD/kWh excluding first-build
-     capex vs diesel-only, at USD 1.37 / 1.87 / 2.48 per litre.
+     capex vs diesel-only, at USD 1.37 / 1.87 / 2.42 per litre.
 Sections 2 and 3 use the default growth (constant 9%/yr).
 """
 
@@ -43,7 +43,11 @@ TOKELAU_OM_NZD_PER_ATOLL = 12_000
 # config unit costs, then expressed per kWp and per kWh so it scales with each plan's size.
 REAL_PV_KW, REAL_BATT_KWH = 330.0, 3379.0
 
-ISLAND_PRICES = [1.37, PRICE, 2.48]       # USD/L; 2.48 = default-case breakeven (run_tokelau.py)
+# USD/L with what each price is. 1.37 = March 2026 Apia retail (2.99 WST/L x 0.3635) x1.25 freight; not the
+# app's low scenario (1.22, the 2013 landed price). 2.42 = full-cost breakeven of the validation case
+# (scripts/run_tokelau.py section 6, all four strategies).
+ISLAND_PRICES = [(1.37, "pre-shock 2026 Apia price x1.25 freight"), (PRICE, "default"),
+                 (2.42, "full-cost breakeven")]
 
 
 def tokelau_om_rates():
@@ -172,10 +176,10 @@ def section_island_paid():
     print("| Diesel USD/L | Island-paid hybrid USD/kWh | Full hybrid USD/kWh | "
           "Diesel-only USD/kWh |")
     print("|---:|---:|---:|---:|")
-    for p in ISLAND_PRICES:
+    for p, what in ISLAND_PRICES:
         island, diesel = per_kwh(rec, p, include_first_build=False)
         full, _ = per_kwh(rec, p)
-        print(f"| {p:.2f} | {island:.3f} | {full:.3f} | {diesel:.3f} |")
+        print(f"| {p:.2f} ({what}) | {island:.3f} | {full:.3f} | {diesel:.3f} |")
     print(f"\nIsland-paid = O&M + later stages (upgrades) + generator fuel and O&M, NPV / "
           f"discounted kWh at 8%. Breakeven diesel price: island-paid USD "
           f"{breakeven(rec, False):.2f}/L, full cost USD {breakeven(rec):.2f}/L. "
