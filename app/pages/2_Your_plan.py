@@ -2,9 +2,9 @@ import streamlit as st
 import streamlit.components.v1 as components
 from components import charts
 from components.layout import (PACIFIC_NOTE, PAGE_CHECKS, card, describe_stage, in_pacific, init,
-                               require_plan, stretch)
+                               require_plan, stretch, usable_fraction)
 from exports.proposal import build_onepager, build_proposal
-from utils.formatting import money, pct
+from utils.formatting import battery, money, pct, short_strategy
 
 init("Your plan", "What to build now, when to upgrade, and what it costs.", step=1)
 plan = require_plan()
@@ -12,6 +12,7 @@ r = plan["results"]
 i, z, f = r.inputs, r.sizing, r.finance
 n, target = i.project_years, i.renewable_target
 upgrades = r.plan_stages[1:]
+usable = usable_fraction(plan)
 tokelau = any(a in i.site_name.lower() for a in ("fakaofo", "nukunonu", "atafu"))
 
 if not in_pacific(i.latitude, i.longitude):
@@ -32,11 +33,11 @@ if not plan["any_feasible"]:
 # ------------------------------------------------------------ a. decisions ---
 c = st.columns(3)
 with c[0]:
-    card("Build now", f"{z.pv_kw:,.0f} kWp + {z.battery_kwh:,.0f} kWh",
+    card("Build now", f"{z.pv_kw:,.0f} kWp + {battery(z.battery_kwh, usable)}",
          sub=f"Capex {money(z.capex_usd)} · {pct(z.renewable_share_year1)} solar in year 1")
 with c[1]:
     if upgrades:
-        items = "".join(f"<li>{describe_stage(s_, i.battery_chemistry)}</li>" for s_ in upgrades)
+        items = "".join(f"<li>{describe_stage(s_, i.battery_chemistry, usable)}</li>" for s_ in upgrades)
         card("Upgrades", f"{len(upgrades)} planned", html_body=f"<ul>{items}</ul>")
     else:
         card("Upgrades", "None needed", sub=f"The first build holds the target through year {n}.")
@@ -46,7 +47,7 @@ with c[2]:
              if len(upgrades) > 1 else "")
     card("Set aside per year", money(f.om_fund_per_year_usd),
          sub=f"Solar + battery O&M, plus saving toward the first upgrade{first}.{later}")
-st.caption(f"Recommended: {plan['rec_name']}. The lowest {n}-year cost plan that meets the target in every year.")
+st.caption(f"Recommended: {short_strategy(plan['rec_name'])}. The lowest {n}-year cost plan that meets the target in every year.")
 
 
 def show(builder, where=st):

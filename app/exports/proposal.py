@@ -10,20 +10,22 @@ import json
 import altair as alt
 
 from components import charts
-from utils.formatting import money, pct, tco2, years
+from components.layout import usable_fraction
+from utils.formatting import battery, money, pct, short_strategy, tco2, years
 
 _VEGA = getattr(alt, "VEGA_VERSION", "5").split(".")[0]
 _VEGALITE = getattr(alt, "VEGALITE_VERSION", "5")
 _EMBED = getattr(alt, "VEGAEMBED_VERSION", "6").split(".")[0]
 
 
-def _schedule(r):
+def _schedule(r, usable):
     """Upgrade schedule lines from Results.plan_stages (first entry = the initial build)."""
     chem = r.inputs.battery_chemistry.replace("_", "-")
     lines = []
     for s in r.plan_stages[1:]:
-        what = (f"add {s.pv_added_kw:,.0f} kWp solar and a new {s.battery_installed_kwh:,.0f} kWh {chem} battery"
-                if s.pv_added_kw > 0.5 else f"replace the battery ({s.battery_installed_kwh:,.0f} kWh {chem})")
+        b = battery(s.battery_installed_kwh, usable)
+        what = (f"add {s.pv_added_kw:,.0f} kWp solar and a new {chem} battery, {b}"
+                if s.pv_added_kw > 0.5 else f"replace the {chem} battery, {b}")
         lines.append(f"Year {s.year}: {what}, about {money(s.capex_usd)}")
     return lines
 
@@ -56,7 +58,8 @@ def build_proposal(r, plan):
     i, z, f, h = r.inputs, r.sizing, r.finance, r.headroom
     e = html.escape
     ap = plan["at_price"]
-    sched = _schedule(r) or [f"None needed: the first build holds the target through year {i.project_years}."]
+    usable = usable_fraction(plan)
+    sched = _schedule(r, usable) or [f"None needed: the first build holds the target through year {i.project_years}."]
     saving = plan["saving_vs_a"]
     k = iter(range(100))
     chart = lambda b: _chart(b, plan, next(k))
@@ -74,10 +77,10 @@ ${i.diesel_price_per_litre:.2f}/L delivered · target {pct(i.renewable_target)} 
 confirm site demand and diesel price before procurement.</p>
 
 <h2>The plan</h2>
-<p>Build {z.pv_kw:,.0f} kWp solar and a {z.battery_kwh:,.0f} kWh {e(i.battery_chemistry.replace('_', '-'))}
-battery now (capex {money(z.capex_usd)}), then:</p>
+<p>Build {z.pv_kw:,.0f} kWp solar and a {e(i.battery_chemistry.replace('_', '-'))} battery of
+{battery(z.battery_kwh, usable)} now (capex {money(z.capex_usd)}), then:</p>
 <ul>{''.join(f'<li>{e(s)}</li>' for s in sched)}</ul>
-<p>Strategy: {e(plan['rec_name'])}.{f" {saving:.0%} cheaper over the project than building big on day one." if saving and saving > 0.0005 else ""}</p>
+<p>Strategy: {e(short_strategy(plan['rec_name']))}.{f" {saving:.0%} cheaper over the project than building big on day one." if saving and saving > 0.0005 else ""}</p>
 {chart(charts.investment_timeline)}
 
 <h2>It still works in the final year</h2>
@@ -121,12 +124,13 @@ the O&amp;M fund.</p>
 def build_onepager(r, plan):
     i, z, h = r.inputs, r.sizing, r.headroom
     ap = plan["at_price"]
-    schedule = _schedule(r)
+    usable = usable_fraction(plan)
+    schedule = _schedule(r, usable)
     upgrades = ("\n".join(f"  - {line}" for line in schedule) if schedule
                 else "  - No upgrades needed during the project.")
     return f"""# {i.site_name}: Our Solar Plan
 
-- New solar panels ({z.pv_kw:,.0f} kW) and a battery ({z.battery_kwh:,.0f} kWh).
+- New solar panels ({z.pv_kw:,.0f} kW) and a battery ({battery(z.battery_kwh, usable)}).
 - About {pct(z.renewable_share_year1)} of our power comes from the sun, and the plan keeps it above
   {pct(i.renewable_target)} every year for {i.project_years} years.
 - Planned upgrades as our island uses more power:

@@ -101,14 +101,17 @@ def investment_timeline(plan):
     r = plan["results"]
     n = r.inputs.project_years
     chem = r.inputs.battery_chemistry.replace("_", "-")
+    from components.layout import usable_fraction   # here, not at import: layout imports Streamlit
+    usable = usable_fraction(plan)
     rows = []
     for k, s in enumerate(r.plan_stages):
+        batt = f"{s.battery_installed_kwh:,.0f} kWh ({s.battery_installed_kwh * usable:,.0f} usable)"
         if k == 0:
-            what = f"Build\n{s.pv_added_kw:,.0f} kWp + {s.battery_installed_kwh:,.0f} kWh"
+            what = f"Build\n{s.pv_added_kw:,.0f} kWp + {batt}"
         elif s.pv_added_kw > 0.5:
-            what = f"Year {s.year}\n+{s.pv_added_kw:,.0f} kWp, new {s.battery_installed_kwh:,.0f} kWh"
+            what = f"Year {s.year}\n+{s.pv_added_kw:,.0f} kWp, new {batt}"
         else:
-            what = f"Year {s.year}\nnew {s.battery_installed_kwh:,.0f} kWh battery"
+            what = f"Year {s.year}\nnew battery {batt}"
         rows.append(dict(Year=s.year, y=0, what=what, cost=_usd(s.capex_usd), usd=s.capex_usd,
                          ly=0.6 if k % 2 == 0 else -0.6, base="bottom" if k % 2 == 0 else "top",
                          align="left" if s.year < 0.65 * n else "right"))
@@ -171,47 +174,47 @@ def renewable_share(plan):
 
 
 def night_coverage(plan):
-    """3. Why the upgrade years: usable battery as % of overnight demand, and solar output as % of demand."""
+    """3. Why the upgrade years: nights of backup = usable battery / one night's demand (18:00-06:00)."""
     r = plan["results"]
     n = r.inputs.project_years
     yrs = pd.DataFrame(plan["years"])
     ups = plan["upgrade_years"]
-    names = {("With upgrades" if ups else "The plan"): PLAN}
+    main = "With upgrades" if ups else "The plan"
+    names = {main: PLAN}
     if ups:
         names["Never upgraded"] = WITHOUT
-    names["Solar / demand"] = PLAN_LIGHT
     df = pd.concat([   # grey first, so the plan line is drawn on top where they coincide
-        pd.DataFrame({"Year": yrs.year, "Pct": yrs.night_without, "Line": "Never upgraded"}) if ups else None,
-        pd.DataFrame({"Year": yrs.year, "Pct": yrs.solar_plan, "Line": "Solar / demand"}),
-        pd.DataFrame({"Year": yrs.year, "Pct": yrs.night_plan, "Line": "With upgrades" if ups else "The plan"}),
+        pd.DataFrame({"Year": yrs.year, "Nights": yrs.night_without / 100, "Line": "Never upgraded"}) if ups else None,
+        pd.DataFrame({"Year": yrs.year, "Nights": yrs.night_plan / 100, "Line": main}),
     ])
-    lines = _lines(df, "Year", "Pct", "Line", names, dashes={"Solar / demand": [6, 4]}, n=n,
-                   y_title="% of demand", y_scale=alt.Scale(domain=[0, max(110, float(df.Pct.max()) * 1.08)], nice=False))
-    ref = alt.Chart(pd.DataFrame({"y": [100]})).mark_rule(color=MUTED, strokeDash=[2, 2]).encode(y="y:Q")
-    reflabel = alt.Chart(pd.DataFrame({"y": [100], "Year": [1], "t": ["100%"]})).mark_text(
+    lines = _lines(df, "Year", "Nights", "Line", names, n=n, y_title="Nights of backup",
+                   y_scale=alt.Scale(domain=[0, max(1.2, float(df.Nights.max()) * 1.08)], nice=False))
+    ref = alt.Chart(pd.DataFrame({"y": [1.0]})).mark_rule(color=MUTED, strokeDash=[2, 2]).encode(y="y:Q")
+    reflabel = alt.Chart(pd.DataFrame({"y": [1.0], "Year": [1], "t": ["1 night"]})).mark_text(
         align="left", dx=3, dy=-7, color=MUTED).encode(x="Year:Q", y="y:Q", text="t:N")
-    start = float(yrs.night_plan.iloc[0])
+    nights = yrs.night_plan / 100
+    start = float(nights.iloc[0])
     if ups:
         before = ups[0] - 1
-        x = float(yrs.night_plan.iloc[before - 1])
-        after = float(yrs.night_plan.iloc[ups[0] - 1])
-        title = (f"The battery's night cover falls from {start:.0f}% to {'only ' if x < 100 else ''}{x:.0f}% by "
-                 f"year {before}; the year-{ups[0]} upgrade restores it to {after:.0f}%")
-        lows = [float(yrs.night_plan.iloc[u - 2]) for u in ups]
-        why = (f" Upgrades come at about {min(lows):.0f}%, not 100%: on cloudy days the battery also stands in for "
-               "missing daytime sun, so it needs a margin above one average night." if min(lows) >= 100 else "")
+        x = float(nights.iloc[before - 1])
+        after = float(nights.iloc[ups[0] - 1])
+        title = (f"The battery's backup falls from {start:.1f} nights to {'only ' if x < 1 else ''}{x:.1f} by "
+                 f"year {before}; the year-{ups[0]} upgrade restores {after:.1f} nights")
+        low = min(float(nights.iloc[u - 2]) for u in ups)
+        why = (f" Upgrades come at about {low:.1f} nights, not 1: on cloudy days the battery also stands in for "
+               "missing daytime sun, so it needs a margin above one average night." if low >= 1 else "")
     else:
-        title = (f"The battery's night cover falls from {start:.0f}% to {float(yrs.night_plan.iloc[-1]):.0f}% "
-                 f"by year {n}, still enough for the target")
+        title = (f"The battery's backup falls from {start:.1f} to {float(nights.iloc[-1]):.1f} nights by year {n}, "
+                 "still enough for the target")
         why = ""
-    sub = (f"Night = 18:00-06:00, {plan['night_share']:.0%} of a day's demand. Night cover = usable battery after "
-           f"fading / that night's demand. Solar output = yearly PV generation / yearly demand.{why}")
-    chart = alt.layer(lines, ref, reflabel, *_upgrade_rules(plan),
-                      *_end_labels(df, "Year", "Pct", "Line", names)
+    sub = (f"1 night = 18:00-06:00 demand, {plan['night_share']:.0%} of a day's demand. Nights of backup = usable "
+           f"battery after fading / that night's demand.{why}")
+    chart = alt.layer(lines, ref, reflabel, *_upgrade_rules(plan), *_end_labels(df, "Year", "Nights", "Line", names)
                       ).properties(height=320, title=_title(title, sub))
-    caption = ("Decision: when to schedule each upgrade. Solid lines: usable battery as % of overnight demand, with "
-               "upgrades (green) and never upgraded (grey). Dashed: yearly solar output as % of yearly demand. "
-               "Daytime solar stays ahead of demand; what runs out is battery storage for the night.")
+    solar = yrs.solar_plan
+    caption = ("Decision: when to schedule each upgrade. Green = with the plan's upgrades; grey = the first battery, "
+               f"never replaced. Daytime solar is not the limit: yearly solar output stays at {solar.min():.0f}-"
+               f"{solar.max():.0f}% of yearly demand. What runs out is battery storage for the night.")
     return chart, caption
 
 

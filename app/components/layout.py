@@ -11,6 +11,7 @@ from dataclasses import asdict
 
 from sunsafe import config
 from sunsafe.interface import Inputs
+from utils.formatting import battery
 
 MODEL_IMPORT_ERROR = None
 try:
@@ -354,8 +355,28 @@ def _run_cached(inputs_dict, growth):
                 prices=PRICE_GRID, cost_diesel=diesel, cost_full=full, cost_island=island,
                 breakeven_full=_crossing(PRICE_GRID, full, diesel),
                 breakeven_island=_crossing(PRICE_GRID, island, diesel), at_price=at_price,
+                usable_fraction=usable,
                 night_share=night_share, fund=fund, fund_upgrades=upgrades, fund_deposit=deposit,
                 om_year1=rec.annual_om_usd, discount_rate=rate)
+
+
+# Tokelau validation case (scripts/run_tokelau.py inputs), run with the current engine (A-D).
+VALIDATION_INPUTS = dict(site_name="Fakaofo, Tokelau (validation case)", latitude=-9.38, longitude=-171.24,
+                         diesel_litres_per_day=200.0, diesel_price_per_litre=config.TOKELAU_DIESEL_PRICE_USD_PER_L,
+                         daily_load_kwh=600.0, critical_load_kw=5.0, renewable_target=0.95,
+                         battery_chemistry="lead_acid", demand_growth_per_year=0.09, project_years=15)
+VALIDATION_GROWTH = (9.0, 0, 9.0)   # constant 9%/yr
+
+
+def run_validation_case():
+    """The validation inputs through the current engine; cached (same cache as any plan). None if it fails."""
+    if run_sunsafe_detailed is None:
+        return None
+    try:
+        return _run_cached(dict(VALIDATION_INPUTS), VALIDATION_GROWTH)
+    except Exception as e:
+        st.session_state.model_error = repr(e)
+        return None
 
 
 def run_plan():
@@ -388,11 +409,18 @@ def placeholder_notes():
     return list(PLACEHOLDER_WARNINGS)
 
 
-def describe_stage(stage, chemistry):
-    """One plain line for a later PlanStage."""
+def usable_fraction(plan):
+    """Usable share of nominal battery kWh (1 - minimum state of charge) for this plan's chemistry."""
+    return plan.get("usable_fraction",
+                    1 - config.BATTERY[plan["results"].inputs.battery_chemistry]["min_soc"])
+
+
+def describe_stage(stage, chemistry, usable):
+    """One plain line for a later PlanStage; battery shown nominal and usable."""
     chem = chemistry.replace("_", "-")
+    batt = battery(stage.battery_installed_kwh, usable)
     if stage.pv_added_kw > 0.5:
-        what = f"add {stage.pv_added_kw:,.0f} kWp solar + new {stage.battery_installed_kwh:,.0f} kWh {chem} battery"
+        what = f"add {stage.pv_added_kw:,.0f} kWp solar + new {chem} battery, {batt}"
     else:
-        what = f"replace the battery ({stage.battery_installed_kwh:,.0f} kWh {chem})"
+        what = f"replace the {chem} battery, {batt}"
     return f"Year {stage.year}: {what} (about ${stage.capex_usd / 1e6:,.2f}M)"
