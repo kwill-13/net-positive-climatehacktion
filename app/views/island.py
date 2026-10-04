@@ -1,8 +1,8 @@
-import pydeck as pdk
 import streamlit as st
-from components.layout import (PACIFIC_NOTE, PAGE_PLAN, PRESETS, apply_preset, growth_label,
-                               growth_tuple, handle_map_click, in_pacific, init, run_plan,
-                               stretch, wrap_lon)
+from streamlit_folium import st_folium
+from components.layout import (PACIFIC_NOTE, PAGE_PLAN, PRESETS, apply_preset, fmt_coords, growth_label,
+                               growth_tuple, handle_map_result, in_pacific, init, island_map, run_plan,
+                               selected_marker, stretch)
 from sunsafe import config
 
 init("Your island", "Where is the mini-grid, and what does it run on today? Then build a plan that "
@@ -16,56 +16,47 @@ def _on_preset():
         apply_preset(PRESETS[s.preset])
 
 
+def _coords_typed():
+    s.lat, s.lon = float(s.lat_in), float(s.lon_in)
+
+
+if s.get("_preset_next"):                 # a preset marker clicked on the map last run
+    s.preset = s.pop("_preset_next")
 st.selectbox("Pacific island preset", ["—"] + list(PRESETS), key="preset", on_change=_on_preset)
 st.caption("Validation = a Tokelau atoll with the inputs used to check the model against the real system. "
            "Illustrative = real coordinates with made-up diesel use (200-600 L/day); replace with your island's data.")
 
-# ------------------------------------------------------------------- map ---
-# Click targets: a faint 1-degree grid over the Pacific, plus the presets. Longitudes are drawn
-# 0-360 so the map does not split at the date line (see wrap_lon in layout).
-_wrap = wrap_lon
 
-
-@st.cache_data(show_spinner=False)
-def _grid():
-    return [{"lat": float(la), "lon": float(lo)} for la in range(-30, 26) for lo in range(130, 241)]
-
-
-def _map():
-    here = [{"lat": float(s.lat), "lon": _wrap(float(s.lon)), "name": s.site_name}]
-    presets = [{"lat": p["lat"], "lon": _wrap(p["lon"]), "name": p["name"], "label": k}
-               for k, p in PRESETS.items()]
-    layers = [
-        pdk.Layer("ScatterplotLayer", id="grid", data=_grid(), get_position="[lon, lat]",
-                  get_fill_color=[31, 111, 102, 18], get_radius=40000, radius_min_pixels=3, pickable=True),
-        pdk.Layer("ScatterplotLayer", id="presets", data=presets, get_position="[lon, lat]",
-                  get_fill_color=[123, 111, 176, 220], get_radius=30000, radius_min_pixels=6, pickable=True),
-        pdk.Layer("ScatterplotLayer", id="here", data=here, get_position="[lon, lat]",
-                  get_fill_color=[192, 80, 77, 255], get_radius=30000, radius_min_pixels=8),
-    ]
-    view = pdk.ViewState(latitude=float(s.lat), longitude=_wrap(float(s.lon)), zoom=2.6)
-    return pdk.Deck(layers=layers, initial_view_state=view, map_style="light",
-                    tooltip={"text": "{name}"})
-
-
-L, R = st.columns(2, gap="large")
+L, R = st.columns([11, 10], gap="large")
 with L:
     with st.container(border=True):
-        tag("Location")
-        event = st.pydeck_chart(_map(), on_select="rerun", selection_mode="single-object", key="map",
-                                height=300)
-        if handle_map_click(event):
+        tag("Map")
+        # Built every run: st_folium changes the map object it draws, so a cached one stops reporting clicks.
+        result = st_folium(island_map(), key="island_map", height=560, use_container_width=True,
+                           returned_objects=["last_clicked", "last_object_clicked"],
+                           feature_group_to_add=selected_marker())
+        if handle_map_result(result):    # only the form changes; the model runs on Build my plan
             st.rerun()
-        st.caption("Click a purple preset or anywhere on the faint 1° grid, then fine-tune the "
-                   "coordinates below. Any coordinates work; solar data comes from NASA POWER.")
-        s.site_name = st.text_input("Island or site name", s.site_name)
-        a, b = st.columns(2)
-        s.lat = a.number_input("Latitude (south negative)", value=float(s.lat), min_value=-90.0,
-                               max_value=90.0, format="%.4f")
-        s.lon = b.number_input("Longitude (west negative)", value=float(s.lon), min_value=-180.0,
-                               max_value=180.0, format="%.4f")
+        st.markdown(f'<div class="ss-coords">Selected: <b>{fmt_coords(float(s.lat), float(s.lon))}</b></div>',
+                    unsafe_allow_html=True)
+        st.caption("Click a purple preset to load it, or anywhere on the map to set the coordinates, then fine-tune "
+                   "them on the right. Any coordinates work; solar data comes from NASA POWER.")
         if not in_pacific(s.lat, s.lon):
             st.markdown(f'<div class="notice">{PACIFIC_NOTE}</div>', unsafe_allow_html=True)
+with R:
+    with st.container(border=True):
+        tag("Location")
+        s.site_name = st.text_input("Island or site name", s.site_name)
+        # Keyed inputs + a callback: the callback runs before the page redraws, so the map (drawn above)
+        # moves its marker at once; map clicks and presets set these keys too (layout.set_coords).
+        a, b = st.columns(2)
+        for k, v in (("lat_in", s.lat), ("lon_in", s.lon)):
+            if k not in s:
+                s[k] = float(v)
+        a.number_input("Latitude (south negative)", key="lat_in", min_value=-90.0, max_value=90.0, format="%.4f",
+                       on_change=_coords_typed)
+        b.number_input("Longitude (west negative)", key="lon_in", min_value=-180.0, max_value=180.0, format="%.4f",
+                       on_change=_coords_typed)
     with st.container(border=True):
         tag("Diesel today")
         s.diesel_lpd = st.number_input("Diesel used by the power station (litres/day)",
@@ -76,7 +67,6 @@ with L:
                   f"an outer atoll (Tokelau; SOURCES.md P1). Scenarios: low "
                   f"{config.TOKELAU_DIESEL_PRICE_LOW_USD_PER_L:.2f}, high "
                   f"{config.TOKELAU_DIESEL_PRICE_HIGH_USD_PER_L:.2f}. Use your island's landed price."))
-with R:
     with st.container(border=True):
         tag("Your goals")
         s.target = st.slider("Renewable target, every year (%)", 50, 100, int(s.target))
@@ -103,11 +93,13 @@ with R:
         s.critical_kw = st.number_input("Critical load: clinic, radio, water (kW)", value=float(s.critical_kw),
                                         min_value=0.1)
 
-if stretch(st.button, "Build my plan", type="primary"):
+st.write("")
+if stretch(st.button, "Build my plan", type="primary", key="build"):
     with st.spinner(f"Building your plan: testing four strategies over {int(s.years)} years "
                     "(a new site also fetches NASA solar data, about 15 s)..."):
         s.plan = run_plan()
     if s.plan is not None:
+        s.just_built = True               # the plan page shows a short confirmation
         st.switch_page(PAGE_PLAN)
     else:
         st.error(f"The model could not run these inputs: {s.model_error}")

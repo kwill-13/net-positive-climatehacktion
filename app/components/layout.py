@@ -92,13 +92,22 @@ DEFAULTS = dict(site_name=_FIRST["name"], lat=_FIRST["lat"], lon=_FIRST["lon"],
                 load_kwh=float(_FIRST["daily_load_kwh"] or 600.0), critical_kw=5.0,
                 target=int(round(_FIRST["target"] * 100)), chem=_FIRST["chemistry"],
                 g_fast=9.0, g_years=5, g_steady=3.0, years=15,
-                plan=None, plan_key=None, model_error=None, last_click=None)
+                plan=None, plan_key=None, model_error=None, map_last_click=None, map_last_obj=None,
+                just_built=False)
+
+
+def set_coords(lat, lon):
+    """Set the site coordinates and the two coordinate inputs (keyed widgets) together."""
+    s = st.session_state
+    s.lat, s.lon = float(lat), float(lon)
+    s.lat_in, s.lon_in = s.lat, s.lon
 
 
 def apply_preset(p):
     """Copy a config.SITE_PRESETS entry into the form (growth and horizon are left as they are)."""
     s = st.session_state
-    s.site_name, s.lat, s.lon = p["name"], float(p["lat"]), float(p["lon"])
+    s.site_name = p["name"]
+    set_coords(p["lat"], p["lon"])
     s.diesel_lpd, s.price = float(p["diesel_litres_per_day"]), float(p["diesel_price"])
     s.known_load = p["daily_load_kwh"] is not None
     if s.known_load:
@@ -111,75 +120,162 @@ def in_pacific(lat, lon):
     return -30.0 <= lat <= 25.0 and (lon >= 130.0 or lon <= -120.0)
 
 
-def wrap_lon(lon):
-    """Map longitudes as 0-360, so the Pacific is not split at the date line."""
-    return lon + 360 if lon < 0 else lon
+def norm_lon(lon):
+    """Longitude in -180..180 (map clicks on a repeated world copy come back outside that range)."""
+    return ((float(lon) + 180.0) % 360.0) - 180.0
 
 
-def unwrap_lon(lon):
-    return lon - 360 if lon > 180 else lon
+def fmt_coords(lat, lon):
+    """'9.3800°S, 171.2400°W'."""
+    return f"{abs(lat):.4f}°{'S' if lat < 0 else 'N'}, {abs(lon):.4f}°{'W' if lon < 0 else 'E'}"
 
 
-def handle_map_click(event):
-    """Apply a new click on the Your island map once (the selection persists across reruns).
-    A preset dot applies that preset; a grid dot sets the coordinates. Returns True if applied."""
+PACIFIC_CENTRE = (-8.0, -175.0)    # lat, lon: map opens over the central Pacific
+
+
+def island_map():
+    """Folium map: light basemap over the Pacific, preset sites as clickable markers, world copies on so the
+    map works across the date line. Markers are drawn on the world copies either side as well."""
+    import folium
+    # Esri light grey canvas: free, no API key (CARTO's basemaps now ask for one)
+    m = folium.Map(location=PACIFIC_CENTRE, zoom_start=3, world_copy_jump=True, prefer_canvas=True,
+                   tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+                   attr="Tiles &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors", max_zoom=16)
+    for label, p in PRESETS.items():
+        for shift in (-360, 0, 360):
+            folium.CircleMarker(location=(p["lat"], p["lon"] + shift), radius=7, weight=2, color="#5b4ea0",
+                                fill=True, fill_color="#7b6fb0", fill_opacity=0.9, bubbling_mouse_events=False,
+                                tooltip=f"{p['name']} · click to load").add_to(m)
+    return m
+
+
+def selected_marker():
+    """The selected point, as a feature group st_folium can update without reloading the map."""
+    import folium
     s = st.session_state
-    sel = getattr(event, "selection", None) or {}
-    objects = sel.get("objects", {}) if hasattr(sel, "get") else {}
-    picked = next(((layer, objs[0]) for layer, objs in objects.items() if objs and layer != "here"), None)
-    if not picked:
+    fg = folium.FeatureGroup(name="selected")
+    for shift in (-360, 0, 360):
+        folium.Marker(location=(float(s.lat), float(s.lon) + shift), tooltip="Selected",
+                      icon=folium.Icon(color="green", icon="map-marker", prefix="fa")).add_to(fg)
+    return fg
+
+
+def _preset_at(lat, lon):
+    """The preset whose marker was clicked (markers sit on exact preset coordinates)."""
+    for label, p in PRESETS.items():
+        if abs(p["lat"] - lat) < 1e-4 and abs(norm_lon(p["lon"]) - norm_lon(lon)) < 1e-4:
+            return label
+    return None
+
+
+def handle_map_result(result):
+    """Apply a new click from st_folium once (its last click persists across reruns): a preset marker loads
+    that preset; anywhere else sets the coordinates (4 decimals). Only the form changes; the model does not
+    run. Returns True if something changed."""
+    s = st.session_state
+    if not result:
         return False
-    layer, obj = picked
-    click = (layer, round(float(obj["lat"]), 4), round(float(obj["lon"]), 4))
-    if click == s.last_click:
-        return False
-    s.last_click = click
-    if layer == "presets" and obj.get("label") in PRESETS:
-        apply_preset(PRESETS[obj["label"]])
-    else:
-        s.lat, s.lon = float(obj["lat"]), float(unwrap_lon(float(obj["lon"])))
-        s.site_name = f"Site at {s.lat:.1f}, {s.lon:.1f}"
-    return True
+    obj, clk = result.get("last_object_clicked"), result.get("last_clicked")
+    if obj and obj != s.get("map_last_obj"):
+        s.map_last_obj = obj
+        s.map_last_click = clk      # a marker click is not also a map click
+        label = _preset_at(float(obj["lat"]), float(obj["lng"]))
+        if label:
+            s["_preset_next"] = label      # the dropdown takes it on the rerun, before it is drawn
+            apply_preset(PRESETS[label])
+            return True
+    if clk and clk != s.get("map_last_click"):
+        s.map_last_click = clk
+        lat, lon = round(float(clk["lat"]), 4), round(norm_lon(clk["lng"]), 4)
+        if _preset_at(lat, lon) is None:
+            set_coords(lat, lon)
+            s.site_name = f"Site at {lat:.1f}, {lon:.1f}"
+            return True
+    return False
 
 
 PACIFIC_NOTE = "Defaults (freight, demand growth) are set for Pacific islands; adjust them for other sites."
 
 # ---------------------------------------------------------------- styling ---
 
+GREEN = "#2e7d32"   # the plan green (charts and theme)
 CSS = """<style>
-.stApp{background:#faf9f6}
-.block-container{padding-top:2rem;max-width:1200px}
-h1{font-size:2rem!important;letter-spacing:-.01em;margin-bottom:0}
-h2,h3{color:#2b2b2b}
-[data-testid="stWidgetLabel"] p,label,.stMarkdown,.stCaption{color:#2b2b2b!important}
-div[data-baseweb="input"],div[data-baseweb="input"] input,div[data-baseweb="select"]>div{background:#fff!important;color:#2b2b2b!important;-webkit-text-fill-color:#2b2b2b}
-[data-testid="stSidebar"]{background:#f0eee8}
-[data-testid="stMetric"]{background:#fff;border:1px solid #e0ddd5;border-radius:12px;padding:12px 16px}
-[data-testid="stVerticalBlockBorderWrapper"]{background:#fff;border-radius:14px}
-.card{border:1px solid #e0ddd5;border-radius:12px;padding:14px 18px;background:#fff;margin-bottom:8px}
-.card.out{border-left:5px solid #1f6f66}.card.inp{border-left:5px solid #7b6fb0}
-.card small,.tag{color:#777;letter-spacing:.08em;text-transform:uppercase;font-size:.72rem;font-weight:600}
-.tag.inp{color:#7b6fb0}.tag.out{color:#1f6f66}
-.card{white-space:normal;overflow-wrap:break-word;word-break:normal}
-.card h2{margin:2px 0 0;color:#1f6f66;font-size:clamp(1.15rem,2.3vw,1.8rem);line-height:1.2}
-.card .sub{color:#555;font-size:.9rem;margin-top:4px}
-.card ul{margin:6px 0 0;padding-left:18px;color:#2b2b2b}
-.notice{background:#fff4d6;border:1px solid #e6c766;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:.88rem;color:#5a4a10}
-.pills{margin:6px 0 14px}.pill{display:inline-block;padding:3px 12px;margin:0 6px 6px 0;border:1px solid #d6d2c7;border-radius:999px;font-size:.78rem;color:#777;background:#fff}
-.pill.on{background:#1f6f66;color:#fff;border-color:#1f6f66}
-.q{color:#555;font-size:1.02rem;margin:2px 0 14px}
-#MainMenu,footer{visibility:hidden}
+:root{--g:#2e7d32;--g-soft:#e8f2e9;--ink:#2b2b2b;--muted:#6b6b6b;--line:#e3e0d8;--card:#fff}
+.block-container{padding-top:1.25rem;padding-bottom:3rem;max-width:1180px}
+h1{font-size:1.9rem!important;font-weight:700!important;letter-spacing:-.01em;margin:.2rem 0 .1rem!important;padding:0!important}
+h3{font-size:1.15rem!important;margin:.6rem 0 .2rem!important}
+#MainMenu,footer,[data-testid="stDecoration"]{display:none!important}
+[data-testid="stSidebar"]{background:#f3f1ec}
+[data-testid="stCaptionContainer"],.stCaption{color:var(--muted)!important}
+[data-testid="stVerticalBlockBorderWrapper"]{background:var(--card);border-radius:14px}
+div[data-baseweb="input"],div[data-baseweb="input"] input,div[data-baseweb="select"]>div{background:#fff!important;color:var(--ink)!important;-webkit-text-fill-color:var(--ink)}
+.ss-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;padding:2px 0 12px;margin-bottom:10px;border-bottom:1px solid var(--line)}
+.ss-brand{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}
+.ss-brand b{font-size:1.2rem;color:var(--g);letter-spacing:-.01em}.ss-brand span{color:var(--muted);font-size:.86rem}
+.ss-steps{display:flex;flex-wrap:wrap;gap:6px}
+.ss-step{display:inline-flex;align-items:center;gap:7px;padding:4px 12px 4px 5px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);font-size:.8rem;white-space:nowrap}
+.ss-step i{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#efede7;color:#777;font-style:normal;font-size:.72rem;font-weight:700}
+.ss-step.on{border-color:var(--g);color:var(--ink);font-weight:600}.ss-step.on i{background:var(--g);color:#fff}
+.ss-step.done i{background:var(--g-soft);color:var(--g)}
+.q{color:var(--muted);font-size:1.02rem;margin:0 0 16px}
+.ss-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:12px;margin:4px 0 14px}
+.card{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:#fff;margin-bottom:8px;box-sizing:border-box;white-space:normal;overflow-wrap:break-word;word-break:normal}
+.ss-grid .card{margin:0;height:100%}
+.card.out{border-top:4px solid var(--g)}.card.inp{border-top:4px solid #7b6fb0}
+.card small,.tag{color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-size:.72rem;font-weight:600}
+.tag.inp{color:#7b6fb0}.tag.out{color:var(--g)}
+.card h2{margin:6px 0 2px;color:var(--g);font-size:clamp(1.15rem,2.2vw,1.65rem);line-height:1.2;font-weight:700;padding:0}
+.card .sub{color:var(--muted);font-size:.9rem;margin-top:6px}
+.card ul{margin:8px 0 0;padding-left:18px;color:var(--ink);font-size:.92rem}
+.ss-summary{border:1px solid var(--line);border-radius:14px;background:#fff;padding:12px 16px;margin:4px 0 12px}
+.ss-summary b{font-size:1.02rem;margin-right:8px}
+.pill{display:inline-block;padding:3px 11px;margin:6px 6px 0 0;border:1px solid var(--line);border-radius:999px;font-size:.8rem;color:#555;background:#faf9f6}
+.notice{background:#fff7e0;border:1px solid #ecd48a;border-radius:10px;padding:8px 14px;margin:6px 0 12px;font-size:.88rem;color:#5a4a10}
+.ss-coords{color:var(--muted);font-size:.88rem;margin:6px 2px 0}.ss-coords b{color:var(--ink)}
+.ss-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:.9rem;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.ss-table th{background:#f6f4ef;color:var(--muted);font-weight:600;text-align:left;font-size:.8rem;padding:8px 10px;border-bottom:1px solid var(--line)}
+.ss-table td{padding:8px 10px;vertical-align:top;border-bottom:1px solid #efece5;overflow-wrap:break-word}
+.ss-table tr:last-child td{border-bottom:none}.ss-table td:first-child{font-weight:600}
+@media (max-width:1000px){.ss-table colgroup,.ss-table thead{display:none}
+.ss-table,.ss-table tbody,.ss-table tr,.ss-table td{display:block;width:100%;box-sizing:border-box}
+.ss-table tr{padding:6px 0;border-bottom:1px solid var(--line)}.ss-table tr:last-child{border-bottom:none}
+.ss-table td{border:none;padding:3px 12px}
+.ss-table td[data-label]:not(:first-child)::before{content:attr(data-label);display:block;color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;margin-top:4px}}
+.stMarkdown table:not(.ss-table){border-collapse:collapse;font-size:.88rem;width:100%}
+.stMarkdown table:not(.ss-table) th{background:#f6f4ef;color:var(--muted);font-weight:600}
+.stMarkdown table:not(.ss-table) th,.stMarkdown table:not(.ss-table) td{border:1px solid #ebe8e1!important;padding:6px 10px!important}
+.ss-hero{padding:18px 0 6px}.ss-hero h3{font-size:1.35rem!important;font-weight:600!important;margin:0 0 8px!important}
+.ss-hero p{color:var(--muted);font-size:1.02rem;max-width:760px}
 </style>"""
 
 TEAL, RED, GREY, AMBER, PURPLE = "#1f6f66", "#c0504d", "#9a9a9a", "#b5651d", "#7b6fb0"
-STEPS = ["1 Your island", "2 Your plan", "3 How we know it works"]
-PAGE_ISLAND = "pages/1_Your_island.py"
-PAGE_PLAN = "pages/2_Your_plan.py"
-PAGE_CHECKS = "pages/3_How_we_know_it_works.py"
+STEPS = ["Your island", "Your plan", "How we know it works"]
+PAGE_HOME = "views/home.py"
+PAGE_ISLAND = "views/island.py"
+PAGE_PLAN = "views/plan.py"
+PAGE_CHECKS = "views/checks.py"
+
+
+def pages():
+    """st.navigation pages; url paths keep the earlier links working."""
+    return [st.Page(PAGE_HOME, title="Home", icon=":material/home:", default=True),
+            st.Page(PAGE_ISLAND, title="1 Your island", icon=":material/location_on:", url_path="Your_island"),
+            st.Page(PAGE_PLAN, title="2 Your plan", icon=":material/insights:", url_path="Your_plan"),
+            st.Page(PAGE_CHECKS, title="3 How we know it works", icon=":material/verified:",
+                    url_path="How_we_know_it_works")]
+
+
+def _header(step):
+    s = st.session_state
+    done = lambda i: i < (step if step is not None else 0) or (i == 0 and s.plan is not None)
+    steps = "".join(
+        f'<span class="ss-step{" on" if i == step else " done" if done(i) else ""}">'
+        f'<i>{"&#10003;" if done(i) and i != step else i + 1}</i>{n}</span>' for i, n in enumerate(STEPS))
+    st.markdown(f'<div class="ss-header"><div class="ss-brand"><b>SunSafe</b><span>Planning Pacific island '
+                f'mini-grids</span></div><div class="ss-steps">{steps}</div></div>', unsafe_allow_html=True)
 
 
 def init(title, question=None, step=None):
-    st.set_page_config(page_title="SunSafe", layout="wide")
     for k, v in DEFAULTS.items():
         st.session_state.setdefault(k, v)
     if _refresh_model_if_changed():
@@ -188,20 +284,17 @@ def init(title, question=None, step=None):
     s = st.session_state
     plan = s.plan
     tag = ("● Model not loaded" if MODEL_IMPORT_ERROR else "● Plan ready" if plan else "● Ready")
-    st.sidebar.markdown("### SUNSAFE\nPlanning Pacific island mini-grids\n\n" + tag)
+    st.sidebar.markdown(tag)
     st.sidebar.caption(f"Plan for: {plan['results'].inputs.site_name}" if plan
                        else f"Current island: {s.site_name}")
     if s.model_error:
         st.sidebar.error(f"Last run failed: {s.model_error}")
     if MODEL_IMPORT_ERROR:
         st.sidebar.error(f"Model not loaded: {MODEL_IMPORT_ERROR}")
+    _header(step)
     if plan and step == 1 and s.plan_key != current_key():
         st.warning("Inputs changed since this plan was built. Go to **Your island** and click "
                    "*Build my plan* to update it.")
-    if step is not None:
-        st.markdown('<div class="pills">' + "".join(
-            f'<span class="pill{" on" if i == step else ""}">{n}</span>' for i, n in enumerate(STEPS)) + "</div>",
-            unsafe_allow_html=True)
     st.title(title)
     if question:
         st.markdown(f'<div class="q">{question}</div>', unsafe_allow_html=True)
@@ -224,10 +317,54 @@ def beats_diesel(breakeven, curve, diesel_curve):
             else "at every price from $1.00/L")
 
 
-def card(label, value, sub=None, html_body=None):
+def card_html(label, value, sub=None, html_body=None):
     body = f'<div class="sub">{sub}</div>' if sub else ""
-    st.markdown(f'<div class="card out"><small>{label}</small><h2>{value}</h2>{body}{html_body or ""}</div>',
-                unsafe_allow_html=True)
+    return f'<div class="card out"><small>{label}</small><h2>{value}</h2>{body}{html_body or ""}</div>'
+
+
+def card(label, value, sub=None, html_body=None):
+    st.markdown(card_html(label, value, sub, html_body), unsafe_allow_html=True)
+
+
+def card_grid(cards):
+    """Cards in an equal-height grid that wraps to one column in a narrow window."""
+    st.markdown('<div class="ss-grid">' + "".join(cards) + "</div>", unsafe_allow_html=True)
+
+
+def summary(title_html, pills):
+    st.markdown(f'<div class="ss-summary"><b>{title_html}</b> ' +
+                " ".join(f'<span class="pill">{p}</span>' for p in pills) + "</div>", unsafe_allow_html=True)
+
+
+def html_table(columns, widths=None):
+    """A wrapping table (no index, fixed column widths) from {header: [cells]}."""
+    import html as _h
+    heads = list(columns)
+    widths = widths or [100 / len(heads)] * len(heads)
+    rows = zip(*columns.values())
+    cols = "".join(f'<col style="width:{w}%">' for w in widths)
+    head = "".join(f"<th>{_h.escape(h)}</th>" for h in heads)
+    body = "".join("<tr>" + "".join(f'<td data-label="{_h.escape(h)}">{_h.escape(str(c))}</td>'
+                                    for h, c in zip(heads, r)) + "</tr>" for r in rows)   # labels: narrow layout
+    st.markdown(f'<table class="ss-table"><colgroup>{cols}</colgroup><thead><tr>{head}</tr></thead>'
+                f"<tbody>{body}</tbody></table>", unsafe_allow_html=True)
+
+
+def download(col, label, data, file_name, mime=None, primary=False):
+    """Full-width download button with a download icon (icon and type need newer Streamlit; dropped if absent)."""
+    kw = dict(mime=mime) if mime else {}
+    for extra in (dict(type="primary" if primary else "secondary", icon=":material/download:"),
+                  dict(type="primary" if primary else "secondary"), {}):
+        try:
+            return stretch(col.download_button, label, data, file_name, **kw, **extra)
+        except TypeError:
+            continue
+
+
+def go_button(label, page, key, primary=False):
+    """A button that opens another page (instead of an arrow link)."""
+    if stretch(st.button, label, key=key, type="primary" if primary else "secondary"):
+        st.switch_page(page)
 
 
 # ------------------------------------------------------------ model calls ---
@@ -399,8 +536,9 @@ def run_plan():
 def require_plan():
     plan = st.session_state.plan
     if plan is None:
-        st.info("No plan yet: go to **Your island** and click *Build my plan*.")
-        st.page_link(PAGE_ISLAND, label="Go to Your island", icon="➡️")
+        with st.container(border=True):
+            st.markdown("No plan yet: go to **Your island** and click *Build my plan*.")
+            go_button("Go to Your island", PAGE_ISLAND, key="empty_go", primary=True)
         st.stop()
     return plan
 

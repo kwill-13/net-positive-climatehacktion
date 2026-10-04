@@ -36,6 +36,20 @@ def fit_width(chart):
     return chart.properties(autosize=alt.AutoSizeParams(type="fit-x", contains="padding"))
 
 
+FONT = '"Source Sans", "Source Sans Pro", "Source Sans 3", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif'
+
+
+def themed(chart):
+    """One look for every chart (app and proposal): the app's font, the same label sizes, light gridlines,
+    no frame, transparent background. Styling only: data, titles and labels are unchanged."""
+    return (chart.configure(font=FONT, background="transparent")
+            .configure_view(stroke=None)
+            .configure_axis(labelFontSize=11.5, titleFontSize=12, titleFontWeight="normal", labelColor="#555555",
+                            titleColor="#555555", gridColor="#ecebe6", domainColor="#cfcac0", tickColor="#cfcac0")
+            .configure_title(font=FONT, anchor="start", subtitleFont=FONT)
+            .configure_text(font=FONT))
+
+
 def _usd(x):
     return f"${x / 1e6:,.2f}M" if abs(x) >= 1e6 else f"${x / 1e3:,.0f}k"
 
@@ -113,8 +127,8 @@ def investment_timeline(plan):
         else:
             what = f"Year {s.year}\nnew battery {batt}"
         rows.append(dict(Year=s.year, y=0, what=what, cost=_usd(s.capex_usd), usd=s.capex_usd,
-                         ly=0.6 if k % 2 == 0 else -0.6, base="bottom" if k % 2 == 0 else "top",
-                         align="left" if s.year < 0.65 * n else "right"))
+                         ly=0.75 if k % 2 == 0 else -0.6, base="bottom" if k % 2 == 0 else "top",
+                         align="left" if s.year < 0.45 * n else "right"))   # labels past mid-project grow leftwards
     df = pd.DataFrame(rows)
     later = r.plan_stages[1:]
     total_later = sum(s.capex_usd for s in later)
